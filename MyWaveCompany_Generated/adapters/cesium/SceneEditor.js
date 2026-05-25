@@ -60,6 +60,9 @@ export class SceneEditor {
     this._placing = false;
     this._coast   = { ...ctx.sceneCfg.coast };
 
+    /** @type {import('./FloodLayer.js').FloodLayer|null} */
+    this._floodLayer = null;
+
     this._bindDom();
     this._setupClickHandler();
     this._syncAll();
@@ -198,9 +201,15 @@ export class SceneEditor {
     this._viewer.scene.canvas.style.cursor = on ? 'crosshair' : '';
   }
 
+  /** @param {import('./FloodLayer.js').FloodLayer} floodLayer */
+  setFloodLayer(floodLayer) {
+    this._floodLayer = floodLayer;
+  }
+
   _syncAll() {
     this._registry.setFloodBarriers(this._barriers);
     this._ocean.updateObstacleBoxes?.(this._registry.getEnuBoxes());
+    this._floodLayer?.rebuildObstacles(this._ocean.obstacleField);
     this._renderBarrierList();
     this._updateOverflow();
     this._viewer.scene.requestRender();
@@ -270,15 +279,17 @@ export class SceneEditor {
     const panel = this._els.overflowPanel;
     if (!panel) return;
 
-    const waterM = this._ocean.getEffectiveWaterHeightM?.()
-      ?? (this._baseAmplitudeM * (this._ocean.amplitudeScale ?? 1));
-
     const overflowIds = [];
     const coastAlong = this._coast.alongCoastM ?? 6500;
+    const floodActive = this._floodLayer?.active ?? false;
+
     const lines = this._barriers.map((b, i) => {
-      const over = waterM > b.heightM;
+      const surgeM = this._ocean.getSurgeAt?.(b.centerE, b.centerN)
+        ?? this._ocean.baseWaterLevelM
+        ?? 0;
+      const over = surgeM > b.heightM;
       if (over) overflowIds.push(b.id);
-      const margin = waterM - b.heightM;
+      const margin = surgeM - b.heightM;
       const protectedM = b.halfE * 2;
       const gapM = Math.max(0, coastAlong - protectedM);
       const cls = over ? 'over' : 'safe';
@@ -288,15 +299,23 @@ export class SceneEditor {
         : '';
       return `<div class="overflow-row ${cls}">
         <span>#${i + 1} (${b.heightM.toFixed(1)}m 벽 · 보호폭 ${protectedM.toFixed(0)}m)</span>
-        <span>${icon} · 수면 ${waterM.toFixed(1)}m (${margin >= 0 ? '+' : ''}${margin.toFixed(1)}m)${gapNote}</span>
+        <span>${icon} · surge ${surgeM.toFixed(1)}m (${margin >= 0 ? '+' : ''}${margin.toFixed(1)}m)${gapNote}</span>
       </div>`;
     });
 
     this._registry.setOverflowState(overflowIds);
 
+    const summarySurge = this._barriers.length
+      ? Math.max(...this._barriers.map((b) => this._ocean.getSurgeAt?.(b.centerE, b.centerN) ?? 0))
+      : (this._ocean.getSurgeLevelM?.() ?? 0);
+
+    const waveNote = floodActive
+      ? ''
+      : ' · <small>홍수 시작 전 — 파고 슬라이더는 시각만</small>';
+
     panel.innerHTML = lines.length
       ? `<div class="overflow-summary ${overflowIds.length ? 'over' : 'safe'}">
-           수면 ${waterM.toFixed(1)} m — ${overflowIds.length ? `${overflowIds.length}개 벽 넘침` : '모든 벽 차단'}
+           surge ${summarySurge.toFixed(1)} m — ${overflowIds.length ? `${overflowIds.length}개 벽 넘침` : '모든 벽 차단'}${waveNote}
          </div>${lines.join('')}`
       : '<p class="empty">차수벽을 배치하면 넘침 여부가 표시됩니다.</p>';
   }

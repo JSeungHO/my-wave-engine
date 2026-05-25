@@ -64,8 +64,8 @@ const MAX_WAKE_SOURCES = 16;
  * Fragment shader 를 생성합니다.
  *
  * ## Phase 4 추가 기능
- * * AABB 장애물 내부 → `discard` (dry zone)
- * * **Landward dry** — flood_barrier **E 범위 내** 북쪽만 dry (양끝은 물 유지)
+ * * AABB 장애물 내부 → `discard` (dry zone, 벽·건물 footprint 만)
+ * * **Barrier shield** — surge/파고 < 벽높이 일 때 landward 수면 서서히 약화 (일자 clip X)
  * * **Side overflow** — 벽 양끝 밖 미보호 구간 넘침 foam
  * * **Edge foam 강화** — 25 m 폭, 밝은 흰색 스플래시
  * * **Debug 모드** (`?debugObstacles=1`) — red=장애물내부, orange=landward, yellow=edge, blue=물
@@ -83,6 +83,7 @@ function buildFragmentShader(deep, shallow, obstacleField = null, debugObstacles
   const sr = shallow.red.toFixed(4);
   const sg = shallow.green.toFixed(4);
   const sb = shallow.blue.toFixed(4);
+  const baseAlpha = ((deep.alpha + shallow.alpha) * 0.5).toFixed(4);
 
   // Phase 4: 장애물 AABB + landward(벽 E범위 내) + 양끝 넘침
   const obstacleGlsl = obstacleField && obstacleField.count > 0
@@ -92,8 +93,12 @@ function buildFragmentShader(deep, shallow, obstacleField = null, debugObstacles
     bool  isDry       = false;
 `;
   const landwardGlsl = obstacleField && obstacleField.count > 0
-    ? obstacleField.buildGlslLandwardDry()
-    : 'bool landwardDry = false;';
+    ? obstacleField.buildGlslBarrierShield()
+    : `
+    float barrierShield  = 0.0;
+    float barrierOvertop = 0.0;
+    float barrierSplash  = 0.0;
+`;
   const sideOverflowGlsl = obstacleField && obstacleField.count > 0
     ? obstacleField.buildGlslSideOverflow()
     : 'float sideOverflow = 0.0;';
@@ -115,6 +120,7 @@ function buildFragmentShader(deep, shallow, obstacleField = null, debugObstacles
   in float v_waveHeight;
   in vec2  v_st;
   in vec2  v_enuPos;
+  in float v_floodH;
 
   void main() {
     /* ─── Phase 4 상수 (빌드 타임 bake) ─────────────────────────────────── */
@@ -123,7 +129,7 @@ function buildFragmentShader(deep, shallow, obstacleField = null, debugObstacles
     /* ─── Phase 4-A: AABB 장애물 dry zone ───────────────────────────────── */
     ${obstacleGlsl}
 
-    /* ─── Phase 4-B: Landward dry — 차수벽 E 범위 안 북쪽만 ─────────────── */
+    /* ─── Phase 4-B: 차수벽 높이 기반 shield (일자 clip 없음) ───────────── */
     ${landwardGlsl}
 
     /* ─── Phase 4-D: 양끝 미보호 구간 넘침 ─────────────────────────────── */
@@ -135,8 +141,12 @@ function buildFragmentShader(deep, shallow, obstacleField = null, debugObstacles
         out_FragColor = vec4(1.0, 0.10, 0.10, 0.85);   /* red   = 장애물 내부 */
         return;
       }
-      if (landwardDry) {
-        out_FragColor = vec4(1.0, 0.55, 0.05, 0.75);   /* orange = 벽 뒤 (보호) */
+      if (barrierShield > 0.35) {
+        out_FragColor = vec4(1.0, 0.55, 0.05, 0.55 + barrierShield * 0.25);   /* orange = 보호(약화) */
+        return;
+      }
+      if (barrierOvertop > 0.08) {
+        out_FragColor = vec4(0.95, 0.35, 0.95, 0.85);   /* magenta = 넘침 */
         return;
       }
       if (sideOverflow > 0.08) {
@@ -152,8 +162,8 @@ function buildFragmentShader(deep, shallow, obstacleField = null, debugObstacles
       return;
     }
 
-    /* ─── 일반 모드: discard ─────────────────────────────────────────────── */
-    if (isDry || landwardDry) discard;
+    /* ─── 일반 모드: 건물·벽 footprint 내부만 제거 ─────────────────────── */
+    if (isDry) discard;
 
     /* ─── 물 색상 계산 ──────────────────────────────────────────────────── */
     vec3 u_deepColor    = vec3(${dr}, ${dg}, ${db});
@@ -181,30 +191,44 @@ function buildFragmentShader(deep, shallow, obstacleField = null, debugObstacles
     foam = max(foam, shoreFoam);
 
     float depthTint = clamp(-v_waveHeight * 0.12 + 0.45, 0.0, 1.0);
-    vec3  skyReflect = vec3(0.38, 0.68, 0.82);
+    vec3  skyReflect = mix(u_deepColor, u_shallowColor, 0.42);
 
     vec3 color = mix(
       u_deepColor,
       u_shallowColor,
-      clamp(fresnel * 0.55 + crest * 0.26 + shoreProx * 0.20 + depthTint * 0.14, 0.0, 1.0)
+      clamp(fresnel * 0.38 + crest * 0.22 + shoreProx * 0.14 + depthTint * 0.12, 0.0, 1.0)
     );
-    color = mix(color, u_shallowColor, shoreProx * 0.28);
-    color = mix(color, skyReflect, fresnel * 0.20);
-    color = mix(color, vec3(0.88, 0.96, 1.0), foam * 0.32 * irregular);
+    color = mix(color, u_shallowColor, shoreProx * 0.10);
+    color = mix(color, skyReflect, fresnel * 0.08);
+    color = mix(color, vec3(0.82, 0.90, 0.88), foam * 0.22 * irregular);
 
     vec3  sunDir = normalize(vec3(0.30, 0.80, 0.50));
     vec3  H      = normalize(V + sunDir);
     float spec   = pow(max(dot(N, H), 0.0), 22.0) * irregular;
-    color += vec3(0.55, 0.72, 0.85) * (spec * 0.10);
+    color += mix(u_shallowColor, vec3(0.65, 0.78, 0.72), 0.5) * (spec * 0.07);
 
-    float alpha = clamp(0.88 + fresnel * 0.08 + crest * 0.02, 0.0, 1.0);
+    float alpha = clamp(${baseAlpha} + fresnel * 0.04 + crest * 0.10, 0.0, 0.82);
+
+    /* 격자 가장자리 — 위성 지도와 부드럽게 블렌드 */
+    float meshEdge = smoothstep(0.0, 0.07, v_st.x) * smoothstep(0.0, 0.07, 1.0 - v_st.x)
+                   * smoothstep(0.0, 0.05, v_st.y) * smoothstep(0.0, 0.05, 1.0 - v_st.y);
+    alpha *= meshEdge;
+    color = mix(color, u_deepColor, (1.0 - meshEdge) * 0.35);
 
     /* ─── Phase 4-C: 장애물 가장자리 foam/splash (강화 25 m) ────────────── */
-    float edgeW    = 25.0;                                 /* 영향 거리 (m) */
+    float edgeW    = 25.0;
     float edgeRaw  = clamp(1.0 - obstMinDist / edgeW, 0.0, 1.0);
-    float edgeFoam = edgeRaw * edgeRaw;                    /* quadratic falloff */
+    float edgeFoam = edgeRaw * edgeRaw;
     color = mix(color, vec3(0.97, 1.00, 1.00), edgeFoam * 0.92);
     alpha = min(1.0, alpha + edgeFoam * 0.50);
+
+    /* ─── Phase 4-B2: 벽 뒤 보호(수위↓) · 넘침 · 충돌 splash ───────────── */
+    color = mix(color, u_deepColor, barrierShield * 0.55);
+    alpha *= (1.0 - barrierShield * 0.72);
+    color = mix(color, vec3(0.98, 0.88, 1.0), barrierOvertop * 0.45);
+    alpha = min(1.0, alpha + barrierOvertop * 0.25);
+    color = mix(color, vec3(1.0, 0.98, 0.95), barrierSplash * 0.85);
+    alpha = min(1.0, alpha + barrierSplash * 0.40);
 
     /* ─── Phase 4-E: 차수벽 양끝 밖 넘침 (주황·거품) ───────────────────── */
     color = mix(color, vec3(1.0, 0.42, 0.22), sideOverflow * 0.72);
@@ -310,6 +334,11 @@ function buildEnuGeometry(widthM, heightM, resolution, maxAmpM) {
         componentsPerAttribute: 1,
         values: batchIds,
       }),
+      a_floodH: new Cesium.GeometryAttribute({
+        componentDatatype:      Cesium.ComponentDatatype.FLOAT,
+        componentsPerAttribute: 1,
+        values: new Float32Array(vertCount),
+      }),
     },
     indices,
     indexDatatype: indexDT,
@@ -324,9 +353,10 @@ function buildEnuGeometry(widthM, heightM, resolution, maxAmpM) {
  *
  * @param {import('../../core/types/SceneTypes.js').CoastAlignment} coast
  * @param {number} maxAmpM
+ * @param {Float32Array|null} [floodHValues=null]  Phase 5: 정점별 홍수 수위 (m)
  * @returns {Cesium.Geometry}
  */
-function buildCoastalEnuGeometry(coast, maxAmpM) {
+function buildCoastalEnuGeometry(coast, maxAmpM, floodHValues = null) {
   const along = bearingToEnu(coast.alongCoastBearingDeg);
   const sea   = bearingToEnu(coast.offshoreBearingDeg);
   const seaSpan   = coast.offshoreM + coast.landwardM;
@@ -350,6 +380,9 @@ function buildCoastalEnuGeometry(coast, maxAmpM) {
   const positions = new Float32Array(vertCount * 3);
   const uvs       = new Float32Array(vertCount * 2);
   const batchIds  = new Float32Array(vertCount);
+  const floodH    = (floodHValues && floodHValues.length === vertCount)
+    ? floodHValues
+    : new Float32Array(vertCount);
 
   let minE = Infinity;
   let maxE = -Infinity;
@@ -429,6 +462,11 @@ function buildCoastalEnuGeometry(coast, maxAmpM) {
         componentsPerAttribute: 1,
         values: batchIds,
       }),
+      a_floodH: new Cesium.GeometryAttribute({
+        componentDatatype:      Cesium.ComponentDatatype.FLOAT,
+        componentsPerAttribute: 1,
+        values: floodH,
+      }),
     },
     indices,
     indexDatatype: indexDT,
@@ -443,31 +481,44 @@ function buildCoastalEnuGeometry(coast, maxAmpM) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * @param {import('../../core/types/SceneTypes.js').CoastAlignment} coast
+ * @param {number} fallbackRes
+ */
+function computeCoastGridRes(coast, fallbackRes) {
+  const seaSpan   = coast.offshoreM + coast.landwardM;
+  const alongSpan = coast.alongCoastM;
+  const baseRes   = coast.resolution ?? fallbackRes;
+  if (seaSpan >= alongSpan) {
+    return {
+      resSea:   baseRes,
+      resAlong: Math.max(12, Math.round(baseRes * alongSpan / seaSpan)),
+    };
+  }
+  return {
+    resAlong: baseRes,
+    resSea:   Math.max(12, Math.round(baseRes * seaSpan / alongSpan)),
+  };
+}
+
+/**
  * Gerstner 파도 파라미터를 GLSL 리터럴로 하드코딩한 버텍스 셰이더를 생성합니다.
  *
  * GLSL ES 1.00 호환 (Cesium WebGL 1 기본):
  *   - 배열 생성자 불가 → float[N](...) 미사용
  *   - 파라미터를 per-wave 코드 블록에 리터럴로 삽입
  *
- * ## Phase 5 flood 옵션 (GLSL 리터럴 bake)
- *   floodFrontN 이 null 이 아닌 경우 `smoothstep` 기반 홍수 전선을 GLSL 에 bake합니다.
- *   **uniform 선언 없음** → DrawCommand 재생성 시 uniform 미주입 crash 방지.
- *
- * 좌표계:
- *   a_enuPos:  (East, North, Up=0)     ENU 로컬 m
- *   dispENU:   (East+ΔE, North+ΔN, ΔU) 변위 적용 ENU
- *   normENU:   Gerstner 법선 → ENU 변환 (x=East, y=North, z=Up)
- *   worldPos:  czm_model * dispENU     ECEF 월드 좌표 (czm_model = enuToEcef)
+ * ## Phase 5 flood
+ *   `a_floodH` 속성 — CPU ShallowWater 격자 샘플 (2D). uniform/1D 전선 bake 사용 안 함.
  *
  * @param {import('../../core/types/WaveTypes.js').GerstnerWaveParams[]} waves
  * @param {number} [ampScale=1]
- * @param {number|null} [floodFrontN=null]   Phase 5: 홍수 전선 ENU North (m), null → flood 없음
- * @param {number}      [floodMaxH=0]        Phase 5: 최대 표시 홍수 높이 × blend (m)
- * @returns {string}  GLSL 버텍스 셰이더 소스
+ * @param {number} [baseWaterM=0]
+ * @returns {string}
  */
-function buildVertexShader(waves, ampScale = 1, floodFrontN = null, floodMaxH = 0) {
+function buildVertexShader(waves, ampScale = 1, baseWaterM = 0) {
   const count = Math.min(waves.length, MAX_WAVES);
   const scale = Math.max(ampScale, 0.05);
+  const baseW = Math.max(0, baseWaterM).toFixed(8);
 
   // ── per-wave GLSL 블록 생성 ───────────────────────────────────────────────
   let waveBlocks = '';
@@ -500,31 +551,24 @@ function buildVertexShader(waves, ampScale = 1, floodFrontN = null, floodMaxH = 
     }`;
   }
 
-  // ── Phase 5: flood 전선을 GLSL 리터럴로 bake (uniform 없음) ─────────────
-  // uniform sampler2D/float 선언을 쓰면 DrawCommand 재생성 시 uniformMap 미주입
-  // → TypeError → renderError → ?material=1 redirect 버그.
-  // 대신 smoothstep 상수로 bake: 전선 위치가 바뀌면 VS 재빌드 (60 프레임마다).
-  const floodBaked = (floodFrontN !== null && floodMaxH > 0) ? /* glsl */`
-    /* ── Phase 5: flood front (리터럴 bake — uniform 없음) ──────────────── */
-    {
-      /* 남쪽(xN < _frontN) = 침수, 북쪽(xN > _frontN+200) = 건조 */
-      float _frontN = ${floodFrontN.toFixed(2)};
-      float _maxH   = ${floodMaxH.toFixed(4)};
-      float _fH = _maxH * (1.0 - smoothstep(_frontN, _frontN + 200.0, xN));
-      dispU += max(0.0, _fH);
-    }
-` : '';
+  // ── Phase 5: 2D 홍수 + 정수위 (파고 ripple 과 분리) ───────────────────────
+  const floodBaked = /* glsl */`
+    float _surgeH = ${baseW} + max(0.0, a_floodH);
+    dispU += _surgeH;
+`;
 
   return /* glsl */`
   in vec3 a_enuPos;
   in vec2 a_st;
   in float batchId;
+  in float a_floodH;
 
   out vec3  v_normalWC;
   out vec3  v_positionWC;
   out float v_waveHeight;
   out vec2  v_st;
-  out vec2  v_enuPos;   /* Phase 4: 미변위 ENU (East, North) m — 장애물 마스크용 */
+  out vec2  v_enuPos;
+  out float v_floodH;   /* Phase 4: 미변위 ENU (East, North) m — 장애물 마스크용 */
 
   void main() {
     float xE = a_enuPos.x;
@@ -563,6 +607,7 @@ function buildVertexShader(waves, ampScale = 1, floodFrontN = null, floodMaxH = 
     v_positionWC    = worldPos.xyz;
     v_normalWC      = normalize(mat3(czm_model) * normENU);
     v_waveHeight    = dispU;
+    v_floodH        = _surgeH;
     v_st            = a_st;
     v_enuPos        = vec2(xE, xN);   /* Phase 4: 미변위 ENU 위치 → fragment 로 전달 */
 
@@ -605,8 +650,8 @@ export class GerstnerWaterPrimitiveGPU {
       heightDeg          = 0.09,
       resolution         = 64,
       coastAlignment     = null,
-      deepColor          = new Cesium.Color(0.00, 0.12, 0.28, 0.90),
-      shallowColor       = new Cesium.Color(0.05, 0.48, 0.68, 0.90),
+      deepColor          = new Cesium.Color(0.05, 0.13, 0.16, 0.58),
+      shallowColor       = new Cesium.Color(0.10, 0.28, 0.30, 0.52),
       buoyancyIterations = 3,
       obstacleBoxes      = [],
       debugObstacles     = false,
@@ -661,10 +706,10 @@ export class GerstnerWaterPrimitiveGPU {
     // ── Phase 5: FloodLayer (연결 전까지 null) ───────────────────────────
     /** @type {import('./FloodLayer.js').FloodLayer|null} */
     this._floodLayer  = null;
-    /** @type {number|null} Phase 5: baked 홍수 전선 ENU North, null = 홍수 없음 */
-    this._floodFrontN = null;
-    /** @type {number} Phase 5: baked 최대 홍수 높이 × blend */
-    this._floodMaxH   = 0;
+    /** @type {Float32Array|null} Phase 5: 정점별 홍수 수위 (m) */
+    this._floodH       = null;
+    /** @type {number} */
+    this._vertCount    = 0;
 
     // ── 지오메트리 크기 계산 ─────────────────────────────────────────────────
     // 위도 방향: DEG2M_LAT, 경도 방향: cos(lat) 보정
@@ -681,10 +726,21 @@ export class GerstnerWaterPrimitiveGPU {
     this._heightM = heightM;
 
     // ── Primitive (bounding volume 함수는 add 전에 설정) ─────────────────────
-    const geometry = coastAlignment
-      ? buildCoastalEnuGeometry(coastAlignment, maxAmp)
-      : buildEnuGeometry(widthM, heightM, meshRes, maxAmp);
-    const vs = buildVertexShader(waves, 1.0, null, 0);  // Phase 5: flood 연결 전 (bake 없음)
+    let geometry;
+    if (coastAlignment) {
+      const { resSea, resAlong } = computeCoastGridRes(coastAlignment, meshRes);
+      this._vertCount = (resSea + 1) * (resAlong + 1);
+      this._floodH    = new Float32Array(this._vertCount);
+      geometry        = buildCoastalEnuGeometry(coastAlignment, maxAmp, this._floodH);
+      this._storeEnuPositions(geometry);
+    } else {
+      geometry        = buildEnuGeometry(widthM, heightM, meshRes, maxAmp);
+      this._vertCount = geometry.attributes.position.values.length / 3;
+      this._floodH    = new Float32Array(this._vertCount);
+      this._storeEnuPositions(geometry);
+    }
+
+    const vs = buildVertexShader(waves, this._amplitudeScale, this._baseWaterLevelM);
     const fs = buildFragmentShader(deepColor, shallowColor, this._obstacleField, debugObstacles);
 
     const halfDiag = coastAlignment
@@ -741,15 +797,8 @@ export class GerstnerWaterPrimitiveGPU {
    * @private
    */
   _updateModelMatrix() {
-    Cesium.Matrix4.fromScale(
-      new Cesium.Cartesian3(1.0, 1.0, this._amplitudeScale),
-      this._scaleScratch,
-    );
-    Cesium.Matrix4.multiply(
-      this.tangentPlane.enuToEcef,
-      this._scaleScratch,
-      this._modelScratch,
-    );
+    // Z 스케일 1.0 — 파고는 VS ampScale, 홍수는 a_floodH (m) 로 분리
+    Cesium.Matrix4.clone(this.tangentPlane.enuToEcef, this._modelScratch);
     if (this._primitive) {
       this._primitive.modelMatrix = this._modelScratch;
     }
@@ -796,6 +845,7 @@ export class GerstnerWaterPrimitiveGPU {
   setBaseWaterLevel(levelM) {
     this._baseWaterLevelM = Math.max(0, levelM);
     this.solver.baseY = this._alt0 + this._baseWaterLevelM;
+    this._rebuildVertexShader();
   }
 
   /**
@@ -814,8 +864,23 @@ export class GerstnerWaterPrimitiveGPU {
   updateCoastAlignment(coast) {
     this._coastAlignment = { ...coast };
     this._meshRes = coast.resolution ?? this._meshRes;
-    const geometry = buildCoastalEnuGeometry(this._coastAlignment, this._maxAmp);
+    if (!this._coastAlignment) return;
+
+    const { resSea, resAlong } = computeCoastGridRes(this._coastAlignment, this._meshRes);
+    this._vertCount = (resSea + 1) * (resAlong + 1);
+    this._floodH    = new Float32Array(this._vertCount);
+    const geometry  = buildCoastalEnuGeometry(this._coastAlignment, this._maxAmp, this._floodH);
+    this._storeEnuPositions(geometry);
     this._replaceGeometry(geometry);
+  }
+
+  /**
+   * @private
+   * @param {Cesium.Geometry} geometry
+   */
+  _storeEnuPositions(geometry) {
+    const pos = geometry.attributes.position.values;
+    this._enuPositions = pos instanceof Float32Array ? pos.slice() : new Float32Array(pos);
   }
 
   /** @private */
@@ -851,8 +916,7 @@ export class GerstnerWaterPrimitiveGPU {
     const vs = buildVertexShader(
       this._waves,
       this._amplitudeScale,
-      this._floodFrontN,
-      this._floodMaxH,
+      this._baseWaterLevelM,
     );
     const newAppearance = new Cesium.Appearance({
       translucent:          true,
@@ -869,51 +933,89 @@ export class GerstnerWaterPrimitiveGPU {
   }
 
   /**
-   * Phase 5: FloodLayer 연결.
-   *
-   * cesium-main.js 에서 ocean primitive 생성 후 호출합니다.
-   * **즉시 VS 재빌드하지 않음** — FloodLayer.tick() → updateFloodFront() 호출 시
-   * 비로소 flood 코드가 GLSL 에 bake 됩니다. (uniform 타이밍 버그 방지)
-   *
+   * Phase 5: FloodLayer 연결
    * @param {import('./FloodLayer.js').FloodLayer} floodLayer
    */
   connectFlood(floodLayer) {
-    this._floodLayer  = floodLayer;
-    this._floodFrontN = null;   // 첫 tick 전까지 flood bake 안 함
-    this._floodMaxH   = 0;
-
-    // FloodLayer 에 back-reference 전달 (tick → updateFloodFront 호출용)
+    this._floodLayer = floodLayer;
     floodLayer.attachOcean(this);
-
-    console.log('[GerstnerGPU] FloodLayer connected (lazy — first VS rebuild on tick)');
+    console.log('[GerstnerGPU] FloodLayer connected (2D height field mode)');
   }
 
   /**
-   * Phase 5: GPU 버텍스 셰이더의 홍수 전선을 갱신합니다.
-   *
-   * `FloodLayer.tick()` 이 약 60 프레임마다 호출합니다.
-   * 값이 이전과 유의미하게 다를 때만 VS 재빌드합니다.
-   *
-   * @param {number|null} frontN       ENU North 홍수 전선 (m). null → 홍수 없음
-   * @param {number}      effectiveMaxH  maxHeightM × blend (m)
+   * Phase 5: CPU ShallowWater 격자 → 정점별 a_floodH 갱신
+   * @param {(e: number, n: number) => number} sampleFn  ENU (m) → 홍수 수위 (m)
    */
-  updateFloodFront(frontN, effectiveMaxH) {
-    const show = (frontN !== null) && (effectiveMaxH > 0);
-    const newFN = show ? frontN      : null;
-    const newMH = show ? effectiveMaxH : 0;
+  updateFloodHeightField(sampleFn) {
+    if (!this._coastAlignment || !this._floodH || !this._enuPositions) return;
 
-    // 변화량이 미미하면 재빌드 스킵 (8 m 미만 이동 & 높이 오차 1 cm 미만)
-    if (newFN === null && this._floodFrontN === null) return;
-    if (
-      newFN !== null &&
-      this._floodFrontN !== null &&
-      Math.abs(newFN - this._floodFrontN) < 8 &&
-      Math.abs(newMH - this._floodMaxH) < 0.01
-    ) return;
+    for (let vi = 0; vi < this._vertCount; vi++) {
+      const e = this._enuPositions[vi * 3 + 0];
+      const n = this._enuPositions[vi * 3 + 1];
+      this._floodH[vi] = Math.max(0, sampleFn(e, n));
+    }
 
-    this._floodFrontN = newFN;
-    this._floodMaxH   = newMH;
-    this._rebuildVertexShader();
+    const geometry = buildCoastalEnuGeometry(
+      this._coastAlignment,
+      this._maxAmp,
+      this._floodH,
+    );
+    this._replaceGeometry(geometry);
+  }
+
+  /** 홍수 수위 필드 제거 (정수위만 VS 에 유지) */
+  clearFloodHeightField() {
+    if (!this._floodH || !this._coastAlignment) return;
+    this._floodH.fill(0);
+    const geometry = buildCoastalEnuGeometry(
+      this._coastAlignment,
+      this._maxAmp,
+      this._floodH,
+    );
+    this._replaceGeometry(geometry);
+  }
+
+  /**
+   * @deprecated FloodLayer → updateFloodHeightField 사용
+   */
+  updateFloodFront(_frontN, effectiveMaxH) {
+    if (effectiveMaxH <= 0) {
+      this.clearFloodHeightField();
+    }
+  }
+
+  /**
+   * 넘침·수위 판정 — 정수위 + 홍수 (파고 crest 제외)
+   * @returns {number}
+   */
+  getSurgeLevelM() {
+    let surge = this._baseWaterLevelM;
+    if (this._floodLayer?.active) {
+      surge += this._floodLayer.getMaxSimHeight() * (this._floodLayer.blend ?? 1);
+    }
+    return surge;
+  }
+
+  /**
+   * ENU 지점 홍수+정수위 (넘침 판정)
+   * @param {number} e
+   * @param {number} n
+   * @returns {number}
+   */
+  getSurgeAt(e, n) {
+    let h = this._baseWaterLevelM;
+    if (this._floodLayer) {
+      h += this._floodLayer.sampleHeightAt(e, n);
+    }
+    return h;
+  }
+
+  /**
+   * @deprecated getSurgeLevelM / getSurgeAt 사용 (파고와 분리)
+   * @returns {number}
+   */
+  getEffectiveWaterHeightM() {
+    return this.getSurgeLevelM();
   }
 
   /**
@@ -959,12 +1061,12 @@ export class GerstnerWaterPrimitiveGPU {
   }
 
   /**
-   * 현재 파고(crest 근사) + 정수위 — overflow 판정용
+   * 현재 파고 crest (시각·foam 전용, 넘침 판정 X)
    * @returns {number}
    */
-  getEffectiveWaterHeightM() {
+  getWaveCrestM() {
     const crest = this._baseWaves.reduce((s, w) => s + (w.amplitude ?? 0), 0) * this._amplitudeScale;
-    return this._baseWaterLevelM + crest;
+    return crest;
   }
 
   /**
@@ -974,7 +1076,7 @@ export class GerstnerWaterPrimitiveGPU {
   setAmplitudeScale(scale) {
     this._amplitudeScale = Math.max(0.05, scale);
     this.solver.amplitudeScale = this._amplitudeScale;
-    this._updateModelMatrix();
+    this._rebuildVertexShader();
   }
 
   /**

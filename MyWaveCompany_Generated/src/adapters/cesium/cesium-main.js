@@ -253,7 +253,7 @@ function setupWaveHeightSlider(ctx) {
  *
  * @param {{ floodLayer: import('../../../adapters/cesium/FloodLayer.js').FloodLayer|null, viewer: import('cesium').Viewer }} ctx
  */
-function setupFloodControls({ floodLayer, viewer }) {
+function setupFloodControls({ floodLayer, viewer, sceneEditor }) {
   if (!floodLayer) {
     const sec = document.getElementById('floodSection');
     if (sec) sec.style.display = 'none';
@@ -285,6 +285,7 @@ function setupFloodControls({ floodLayer, viewer }) {
         btnStart.textContent = '⏸ 일시정지';
       }
       updateStatus();
+      sceneEditor?.refreshOverflow();
       viewer.scene.requestRender();
     });
   }
@@ -294,7 +295,7 @@ function setupFloodControls({ floodLayer, viewer }) {
       floodLayer.reset();
       if (btnStart) btnStart.textContent = '▶ 시작';
       updateStatus();
-      viewer.scene.requestRender();
+      sceneEditor?.refreshOverflow();
     });
   }
 
@@ -417,8 +418,8 @@ async function boot() {
 
     setOverlay(overlay, 'Gerstner 수면 생성 중…');
     log(8, useGpu ? 'GerstnerWaterPrimitiveGPU' : 'GerstnerWaterPrimitive');
-    const deepRgb    = sceneCfg.oceanColors?.deep    ?? [0.0, 0.10, 0.25, 0.88];
-    const shallowRgb = sceneCfg.oceanColors?.shallow ?? [0.04, 0.44, 0.65, 0.88];
+    const deepRgb    = sceneCfg.oceanColors?.deep    ?? [0.05, 0.13, 0.16, 0.58];
+    const shallowRgb = sceneCfg.oceanColors?.shallow ?? [0.10, 0.28, 0.30, 0.52];
 
     const ocean = new GerstnerWaterPrimitive(viewer, config.waves, {
       lon0:       sceneCfg.anchor.lon,
@@ -482,16 +483,16 @@ async function boot() {
       const obstField = new ObstacleField(enuBoxes);
       floodLayer = new FloodLayer(viewer, floodCfg, obstField);
 
-      // ocean.connectFlood: FloodLayer 에 back-reference 전달
-      // (VS 재빌드는 첫 tick → updateFloodFront() 호출 시 실행 — uniform 타이밍 버그 방지)
+      // ocean.connectFlood: FloodLayer → 2D height field (a_floodH)
       if (typeof ocean.connectFlood === 'function') {
         ocean.connectFlood(floodLayer);
-        log('flood', 'FloodLayer connected to ocean (GLSL-bake mode)');
+        log('flood', 'FloodLayer connected to ocean (2D height field)');
       }
       runtime.floodLayer = floodLayer;
+      sceneEditor?.setFloodLayer(floodLayer);
     }
 
-    setupFloodControls({ floodLayer, viewer });
+    setupFloodControls({ floodLayer, viewer, sceneEditor });
 
     log(9, 'WakeRegistry');
     const registry = new WakeRegistry(viewer, iCfg);
@@ -576,6 +577,7 @@ async function boot() {
     });
 
     let _lastFrameMs = performance.now();
+    let _lastOverflowMs = 0;
     viewer.scene.preRender.addEventListener(() => {
       // ── FloodLayer tick ─────────────────────────────────────────────────
       const nowMs  = performance.now();
@@ -583,13 +585,18 @@ async function boot() {
       _lastFrameMs = nowMs;
       floodLayer?.tick(dtReal);
 
+      if (floodLayer?.active && sceneEditor && nowMs - _lastOverflowMs > 1000) {
+        _lastOverflowMs = nowMs;
+        sceneEditor.refreshOverflow();
+      }
+
       if (!overlay) return;
       try {
         const scale = Number(runtime.waveScale ?? ocean.amplitudeScale ?? 1);
         const heightM = Number(runtime.waveHeightM ?? baseAmplitudeM * scale);
-        const waterTotal = ocean.getEffectiveWaterHeightM?.() ?? heightM;
+        const surgeM = ocean.getSurgeLevelM?.() ?? ocean.baseWaterLevelM ?? 0;
         const overflowN = obstacleRegistry.getFloodBarriers?.()
-          .filter((b) => waterTotal > b.heightM).length ?? 0;
+          .filter((b) => (ocean.getSurgeAt?.(b.centerE, b.centerN) ?? surgeM) > b.heightM).length ?? 0;
 
         const floodStatus = floodLayer
           ? (floodLayer.active
@@ -602,7 +609,7 @@ async function boot() {
           `장면 : ${sceneCfg.name}<br>` +
           `모드 : ${useGpu ? 'GPU 2b (3D)' : 'Material 2a (평면·<a href="?" style="color:#9cf">GPU로</a>)'}<br>` +
           `파고 : <b>${heightM.toFixed(1)} m</b> (${scale.toFixed(2)}×) · ` +
-          `수면합 : <b>${waterTotal.toFixed(1)} m</b><br>` +
+          `surge : <b>${surgeM.toFixed(1)} m</b><br>` +
           `차수벽 : ${obstacleRegistry.floodBarrierCount ?? 0}개 · ` +
           `<b style="color:${overflowN ? '#f66' : '#6f6'}">` +
           `${overflowN ? `⚠ ${overflowN}개 넘침` : '✓ 차단'}</b><br>` +

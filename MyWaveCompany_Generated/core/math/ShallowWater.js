@@ -145,6 +145,26 @@ export class ShallowWater {
     this._h.fill(0);
   }
 
+  /**
+   * 장애물(차수벽·건물) 변경 시 벽 마스크 재생성
+   * @param {import('./ObstacleField.js').ObstacleField} obstacleField
+   */
+  rebuildWallMask(obstacleField) {
+    this._buildWallMask(obstacleField);
+  }
+
+  /**
+   * 격자 전체 최대 수위 (m)
+   * @returns {number}
+   */
+  getMaxHeight() {
+    let m = 0;
+    for (let i = 0; i < this._h.length; i++) {
+      if (this._h[i] > m) m = this._h[i];
+    }
+    return m;
+  }
+
   // ── 내부 ──────────────────────────────────────────────────────────────────
 
   /**
@@ -171,27 +191,28 @@ export class ShallowWater {
 
     // ── 내부 셀 ──────────────────────────────────────────────────────────
     for (let j = 1; j < ny; j++) {
-      const isNorth = j === ny - 1;
-
       for (let i = 0; i < nx; i++) {
         const idx = i + j * nx;
 
         if (wall[idx]) {
-          hNew[idx] = 0;
+          // no-flow 벽: 남쪽 수위를 반영 (벽 앞에서 물이 쌓임, 즉시 0으로 소멸 X)
+          const hS = (j === 1)
+            ? inflH
+            : (wall[i + (j - 1) * nx] ? h[idx] : h[i + (j - 1) * nx]);
+          hNew[idx] = Math.max(h[idx], hS * 0.98);
           continue;
         }
 
         const hij = h[idx];
 
         // ── 이웃 높이 가져오기 (경계·벽 → Neumann) ────────────────────────
-        // 남 (j-1): j=1 이면 유입 경계, 아니면 배열 참조
         const hS = (j === 1)
           ? inflH
           : (wall[i + (j - 1) * nx] ? hij : h[i + (j - 1) * nx]);
 
-        // 북 (j+1): 마지막 행 → 유출 경계 (h=0)
-        const hN = isNorth
-          ? 0
+        // 북: 도메인 끝·육지 = Neumann (유출 h=0 제거 → 물이 북쪽에서 쌓일 수 있음)
+        const hN = (j === ny - 1)
+          ? hij
           : (wall[i + (j + 1) * nx] ? hij : h[i + (j + 1) * nx]);
 
         // 서 (i-1): 도메인 밖 → Neumann (반사)
@@ -214,12 +235,6 @@ export class ShallowWater {
         // ── 시간 적분 (forward Euler) ────────────────────────────────────
         hNew[idx] = Math.max(0, hij + dt * (D * lap - advN));
       }
-    }
-
-    // ── 북쪽 경계 (j=ny-1): 유출 (h=0) ──────────────────────────────────
-    for (let i = 0; i < nx; i++) {
-      const idx = i + (ny - 1) * nx;
-      if (!wall[idx]) hNew[idx] = 0;
     }
 
     this._h = hNew;

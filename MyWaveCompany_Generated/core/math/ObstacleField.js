@@ -114,33 +114,66 @@ export class ObstacleField {
   // ── Landward Clip ─────────────────────────────────────────────────────────
 
   /**
-   * flood_barrier **E 범위 안** 북쪽(landward)만 dry.
-   * 벽이 닿지 않는 동·서 구간은 물이 유지되어 넘칠 수 있음.
+   * 차수벽 뒤(landward) 보호 — surge/파고가 벽 높이 미만일 때만 **서서히** 약화.
+   * 지리적 일자 discard 대신 높이 기반 + 북쪽으로 부드러운 fade.
    *
-   * @returns {string} GLSL — `bool landwardDry` 설정
+   * @returns {string} GLSL — `barrierShield`, `barrierOvertop`, `barrierSplash`
    */
-  buildGlslLandwardDry() {
+  buildGlslBarrierShield() {
     const barriers = this._boxes.filter((b) => b.type === 'flood_barrier');
     if (barriers.length === 0) {
-      return 'bool landwardDry = false;';
+      return `
+    float barrierShield  = 0.0;
+    float barrierOvertop = 0.0;
+    float barrierSplash  = 0.0;
+`;
     }
 
-    let code = 'bool landwardDry = false;\n';
+    let code = `
+    float barrierShield  = 0.0;
+    float barrierOvertop = 0.0;
+    float barrierSplash  = 0.0;
+`;
     for (let i = 0; i < barriers.length; i++) {
       const b = barriers[i];
       const ce = b.centerE.toFixed(4);
-      const cn = b.centerN.toFixed(4);
       const he = b.halfE.toFixed(4);
       const hn = b.halfN.toFixed(4);
       const northEdge = (b.centerN + b.halfN).toFixed(4);
+      const southEdge = (b.centerN - b.halfN).toFixed(4);
+      const wallH = b.heightM.toFixed(4);
       code += `
-    /* landward dry ${i}: ${b.id} — E [${ce}±${he}] 북쪽만 */
-    if (abs(v_enuPos.x - ${ce}) <= ${he} && v_enuPos.y > ${northEdge}) {
-      landwardDry = true;
+    /* barrier shield ${i}: ${b.id} */
+    {
+      bool  _inE${i}   = abs(v_enuPos.x - ${ce}) <= ${he};
+      float _landN${i} = v_enuPos.y - ${northEdge};
+      if (_inE${i} && _landN${i} > 0.0) {
+        float _fadeN${i} = smoothstep(90.0, 4.0, _landN${i});
+        float _over${i}  = v_waveHeight - ${wallH};
+        if (_over${i} < 0.0) {
+          float _below${i} = smoothstep(0.0, ${wallH}, -_over${i});
+          barrierShield = max(barrierShield, _below${i} * _fadeN${i});
+        } else {
+          barrierOvertop = max(barrierOvertop, smoothstep(0.0, 1.8, _over${i}) * _fadeN${i});
+        }
+      }
+      if (_inE${i} && v_enuPos.y >= ${southEdge} - 6.0 && v_enuPos.y <= ${northEdge} + 4.0) {
+        float _hit${i} = smoothstep(${wallH} * 0.75, ${wallH} * 1.15, v_waveHeight);
+        float _face${i} = 1.0 - smoothstep(0.0, ${hn}, abs(v_enuPos.y - ${southEdge}));
+        barrierSplash = max(barrierSplash, _hit${i} * _face${i});
+      }
     }
 `;
     }
     return code;
+  }
+
+  /**
+   * @deprecated buildGlslBarrierShield() — 높이 기반 보호
+   * @returns {string}
+   */
+  buildGlslLandwardDry() {
+    return this.buildGlslBarrierShield();
   }
 
   /**
