@@ -1,11 +1,18 @@
 # .NET
 bin/
 obj/
+backend/bin/
+backend/obj/
 
 # Node / Vite
 node_modules/
 dist/
-MyWaveCompany_Generated/public/cesium/
+frontend/node_modules/
+frontend/dist/
+frontend/public/cesium/
+
+# Legacy (removed layout)
+MyWaveCompany_Generated/
 
 # Secrets
 .env

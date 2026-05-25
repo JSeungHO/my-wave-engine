@@ -2,7 +2,7 @@
 
 **Cesium 위 해운대 해안에서 Gerstner 파도·2D 홍수·차수벽을 실시간으로 시뮬레이션하는 WebGL 프로젝트**
 
-.NET CLI로 WebGL 스캐폴드를 생성하고, `MyWaveCompany_Generated/` 에서 **Cesium + Three.js** 데모를 실행합니다.
+`backend/` — .NET CLI (sync, serve, build) · `frontend/` — Vite + Cesium + Three.js 데모
 
 ---
 
@@ -58,8 +58,8 @@
 git clone <repository-url>
 cd MyAutomationEngine
 
-# WebGL 프로젝트 스캐폴드 생성 (최초 1회)
-dotnet run
+# frontend/ 스캐폴드 동기화 (최초 1회)
+dotnet run -- sync
 
 # 개발 서버 (npm install 자동)
 dotnet run -- serve
@@ -77,7 +77,7 @@ dotnet run -- serve
 ### 수동 실행 (npm만)
 
 ```bash
-cd MyWaveCompany_Generated
+cd frontend
 npm install
 npm run dev
 ```
@@ -88,13 +88,11 @@ npm run dev
 
 | 영역 | 기술 |
 |------|------|
-| 스캐폴드 | .NET 10, `Program.cs` |
-| 3D 지구 | [CesiumJS](https://cesium.com/) 1.122 |
-| 로컬 3D | [Three.js](https://threejs.org/) 0.169 |
-| 빌드 | Vite 5 |
+| **backend/** | .NET 10 CLI — sync, serve, build, doctor |
+| **frontend/** | Vite 5, CesiumJS 1.122, Three.js 0.169 |
 | 파도 | Gerstner (GPU Gems Ch.1) — CPU + GLSL |
 | 홍수 | 2D Shallow Water (CPU) → 정점 `a_floodH` (GPU) |
-| 설정 | JSON (`Configs/*.json`) |
+| 설정 | JSON (`frontend/Configs/*.json`) |
 
 ---
 
@@ -102,22 +100,23 @@ npm run dev
 
 ```
 MyAutomationEngine/
-├── Program.cs                 # 기획서 → MyWaveCompany_Generated/ 생성
-├── 기획서.md                  # 제품 목표 · North Star
+├── MyAutomationEngine.csproj  # 루트에서 dotnet run
+├── backend/                   # .NET CLI · Templates
+│   ├── Commands/              # sync, serve, build, clean …
+│   ├── Templates/             # 코드 생성 템플릿
+│   └── Program.cs
+├── frontend/                  # WebGL 데모 (구 MyWaveCompany_Generated)
+│   ├── Configs/               # waves, scene, obstacles, flood …
+│   ├── core/                  # GerstnerWave, ShallowWater, ObstacleField …
+│   ├── adapters/              # cesium/, three/
+│   ├── src/adapters/cesium/   # ★ Cesium 진입점 (cesium-main.js)
+│   └── index.html
 ├── docs/                      # 로드맵 · 기획 · 스크린샷
-│   └── screenshots/           # README용 캡처
-└── MyWaveCompany_Generated/
-    ├── Configs/               # waves, scene, obstacles, flood …
-    ├── core/                  # GerstnerWave, ShallowWater, ObstacleField …
-    ├── adapters/
-    │   ├── cesium/            # GPU 수면, FloodLayer, SceneEditor …
-    │   └── three/             # OceanMaterial, OceanMesh
-    ├── src/adapters/cesium/   # ★ Cesium 진입점 (cesium-main.js)
-    └── index.html             # 메인 UI
+├── 기획서.md
+└── 진행상태.md
 ```
 
-**Cesium 진입점:** `MyWaveCompany_Generated/src/adapters/cesium/cesium-main.js`  
-(`adapters/cesium/cesium-main.js` 는 레거시)
+**Cesium 진입점:** `frontend/src/adapters/cesium/cesium-main.js`
 
 ---
 
@@ -125,16 +124,16 @@ MyAutomationEngine/
 
 | 파일 | 역할 |
 |------|------|
-| `Configs/waves.json` | Gerstner 8파도 — 진폭·파장·방향 |
-| `Configs/scene.json` | 해운대 앵커, 수면 범위, 카메라, **`oceanColors`** |
-| `Configs/obstacles.json` | 차수벽·건물 footprint |
-| `Configs/flood.json` | 2D 홍수 격자·유입·속도 |
-| `Configs/interaction.json` | Wake, collision |
+| `frontend/Configs/waves.json` | Gerstner 8파도 — 진폭·파장·방향 |
+| `frontend/Configs/scene.json` | 해운대 앵커, 수면 범위, 카메라, **`oceanColors`** |
+| `frontend/Configs/obstacles.json` | 차수벽·건물 footprint |
+| `frontend/Configs/flood.json` | 2D 홍수 격자·유입·속도 |
+| `frontend/Configs/interaction.json` | Wake, collision |
 
 우측 **「장면 설정」** 패널에서 런타임 조정 후 **설정 JSON 내보내기** 가능.  
 상세: [docs/SCENE_LAYOUT.md](./docs/SCENE_LAYOUT.md)
 
-### 물색 조정 (`scene.json`)
+### 물색 조정 (`frontend/Configs/scene.json`)
 
 ```json
 "oceanColors": {
@@ -169,8 +168,8 @@ Layer 0  Cesium       — 위성·지형·Entity 장애물
 | [docs/DOC_GUIDE.md](./docs/DOC_GUIDE.md) | 구현 시 읽는 순서 |
 | [진행상태.md](./진행상태.md) | 완료/미완 스냅샷 |
 | [docs/SCENE_LAYOUT.md](./docs/SCENE_LAYOUT.md) | 물·차수벽 배치 |
-| [docs/REFERENCE_VIDEO.md](./docs/REFERENCE_VIDEO.md) | 참조 영상 타겟 UX |
-| [MyWaveCompany_Generated/docs/](./MyWaveCompany_Generated/docs/) | API, CONFIG, SHADER |
+| [docs/PROJECT_LAYOUT.md](./docs/PROJECT_LAYOUT.md) | frontend/backend 폴더 구조 |
+| [frontend/docs/](./frontend/docs/) | API, CONFIG, SHADER |
 
 ---
 
@@ -182,6 +181,7 @@ Layer 0  Cesium       — 위성·지형·Entity 장애물
 | 4 | 차수벽·건물 + SceneEditor + 넘침 UI | ✅ |
 | 5 | 2D Shallow Water + 2D height field GPU | ✅ |
 | — | surge/파고 분리, barrier shield, oceanColors | ✅ |
+| — | frontend/backend 폴더 분리 | ✅ | [PROJECT_LAYOUT.md](./docs/PROJECT_LAYOUT.md) |
 | 6 | 3D Tiles·지형 침수 | 📋 |
 | 7 | Wake GPU, 연출 | 📋 |
 
@@ -189,19 +189,17 @@ Layer 0  Cesium       — 위성·지형·Entity 장애물
 
 ## 스크린샷 갱신
 
-데모 실행 후 캡처:
-
 ```bash
 dotnet run -- serve
-# 브라우저에서 장면 구성 후 캡처 → docs/screenshots/ 에 저장
-node MyWaveCompany_Generated/Scripts/smoke-test.mjs http://localhost:5173/
+node frontend/Scripts/smoke-test.mjs http://localhost:5173/
+# 캡처 → docs/screenshots/
 ```
 
 ---
 
 ## 참고
 
-- [Cesium Gerstner GPU PoC](./MyWaveCompany_Generated/adapters/cesium/INTEGRATION.md)
+- [Cesium Gerstner GPU PoC](./frontend/adapters/cesium/INTEGRATION.md)
 - [GPU Gems Ch.1 — Water Simulation](https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models)
 
 ---

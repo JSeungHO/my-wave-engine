@@ -2,7 +2,7 @@
 
 > **역할:** 수면(물) **범위**와 **차수벽·건물 위치**를 JSON만으로 바꿀 수 있게 하는 **기획·설정 가이드**  
 > **상태:** 📋 기획 확정 (구현: Phase 4~6 일부 반영, 편집 UX·검증은 예정)  
-> **관련:** [기획서.md](../기획서.md) · [CONFIG.md](../MyWaveCompany_Generated/docs/CONFIG.md) · [FLOOD.md](../MyWaveCompany_Generated/docs/FLOOD.md)
+> **관련:** [기획서.md](../기획서.md) · [CONFIG.md](../frontend/docs/CONFIG.md) · [FLOOD.md](../frontend/docs/FLOOD.md)
 
 ---
 
@@ -386,12 +386,12 @@ northM = (lat - anchorLat) × 111320
 
 **핵심 파일:**
 
-- `MyWaveCompany_Generated/Configs/scene.json`
-- `MyWaveCompany_Generated/Configs/obstacles.json`
-- `MyWaveCompany_Generated/core/types/SceneTypes.js`
-- `MyWaveCompany_Generated/core/types/ObstacleTypes.js`
-- `MyWaveCompany_Generated/adapters/cesium/GerstnerWaterPrimitiveGPU.js`
+- `frontend/Configs/scene.json`
+- `frontend/Configs/obstacles.json`
+- `frontend/core/types/SceneTypes.js`
+- `frontend/core/types/ObstacleTypes.js`
+- `frontend/adapters/cesium/GerstnerWaterPrimitiveGPU.js`
 
 ---
 
-*최종 갱신: 2026-05-25 — 물 범위·차수벽 위치 설정 기획 추가. 구현 변경 시 [CONFIG.md](../MyWaveCompany_Generated/docs/CONFIG.md), [FLOOD.md](../MyWaveCompany_Generated/docs/FLOOD.md), [진행상태.md](../진행상태.md) 동기화.*
+*최종 갱신: 2026-05-25 — 물 범위·차수벽 위치 설정 기획 추가. 구현 변경 시 [CONFIG.md](../frontend/docs/CONFIG.md), [FLOOD.md](../frontend/docs/FLOOD.md), [진행상태.md](../진행상태.md) 동기화.*

@@ -9,7 +9,7 @@
  *      interaction.json / 기획서.md 값으로 치환
  *   2. gen_ 접두사를 제거한 뒤 core/math/WakeField.js 로 출력
  *
- * 현재(Phase 2c) 는 수동으로 MyWaveCompany_Generated/core/math/WakeField.js 를 유지합니다.
+ * 현재(Phase 2c) 는 수동으로 frontend/core/math/WakeField.js 를 유지합니다.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * 템플릿 변수 목록 (Phase 3 치환 대상)
@@ -25,14 +25,14 @@
  *
  *   Templates/core/gen_WakeField.js
  *     → (Program.cs 치환 + 복사)
- *     → MyWaveCompany_Generated/core/math/WakeField.js
+ *     → frontend/core/math/WakeField.js
  *
  * @see 기획서.md §Templates/ 호환 구조
  * @see 기획서.md §Phase 2c 기획 §3. core/math/WakeField.js
  */
 
 // TODO: Phase 3 — Program.cs 가 이 파일을 기반으로 WakeField.js 를 생성합니다.
-//       현재는 MyWaveCompany_Generated/core/math/WakeField.js 를 직접 유지하세요.
+//       현재는 frontend/core/math/WakeField.js 를 직접 유지하세요.
 
 import { MAX_WAKE_SOURCES, KNOTS_TO_MS } from '../types/InteractionTypes.js';
 

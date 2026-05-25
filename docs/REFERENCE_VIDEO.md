@@ -198,4 +198,4 @@
 
 ---
 
-*영상 장면 확인 후 §7 답변 → Phase 5a 착수 여부 결정. 구현 시 [FLOOD.md](../MyWaveCompany_Generated/docs/FLOOD.md) §2와 동기화.*
+*영상 장면 확인 후 §7 답변 → Phase 5a 착수 여부 결정. 구현 시 [FLOOD.md](../frontend/docs/FLOOD.md) §2와 동기화.*

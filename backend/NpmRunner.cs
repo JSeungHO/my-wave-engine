@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-/// <summary>MyWaveCompany_Generated 에서 npm 명령 실행</summary>
+/// <summary>frontend/ 에서 npm 명령 실행</summary>
 static class NpmRunner
 {
     public static int Run(string workingDirectory, string arguments, bool interactive = false)

@@ -2,7 +2,7 @@
   "_template": "gen_interaction.json → configs/interaction.json",
   "_comment": [
     "자동화 엔진(Program.cs Phase 3)이 이 파일을 읽어",
-    "MyWaveCompany_Generated/configs/interaction.json 을 생성합니다.",
+    "frontend/configs/interaction.json 을 생성합니다.",
     "gen_ 파일은 직접 수정하지 말고 이 템플릿(또는 기획서)을 수정하세요."
   ],
   "wake": {

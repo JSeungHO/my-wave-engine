@@ -76,7 +76,7 @@ static class BuildCommand
 
         Console.WriteLine();
         Console.WriteLine($"[엔진] build 완료 — {distDir}");
-        Console.WriteLine("  미리보기: cd MyWaveCompany_Generated && npm run preview");
+        Console.WriteLine("  미리보기: cd frontend && npm run preview");
         return 0;
     }
 }

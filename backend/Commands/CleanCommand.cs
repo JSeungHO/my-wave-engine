@@ -8,7 +8,7 @@ static class CleanCommand
 
         if (full)
         {
-            Console.WriteLine("[엔진] clean --full — MyWaveCompany_Generated 전체 삭제 후 sync");
+            Console.WriteLine("[엔진] clean --full — frontend/ 전체 삭제 후 sync");
             if (!yes)
             {
                 Console.Error.WriteLine("[경고] 수동 작성 코드까지 모두 삭제됩니다.");
@@ -21,7 +21,7 @@ static class CleanCommand
 
         Console.WriteLine("[엔진] clean — 빌드 캐시·npm 의존성 초기화");
 
-        var projectDir = EnginePaths.GeneratedProject;
+        var projectDir = EnginePaths.FrontendProject;
         if (!Directory.Exists(projectDir))
         {
             Console.WriteLine("[엔진] 생성 프로젝트 없음 — sync 로 새로 만드세요.");
@@ -40,7 +40,7 @@ static class CleanCommand
 
     static int CleanFull()
     {
-        var projectDir = EnginePaths.GeneratedProject;
+        var projectDir = EnginePaths.FrontendProject;
         if (Directory.Exists(projectDir))
         {
             Console.WriteLine($"[엔진] 삭제: {projectDir}");

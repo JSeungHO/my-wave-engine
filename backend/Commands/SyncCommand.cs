@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-/// <summary>기획서 + Templates → MyWaveCompany_Generated 동기화</summary>
+/// <summary>기획서 + Templates → frontend/ 동기화</summary>
 static class SyncCommand
 {
     const string Placeholder = "// TODO: 자동 생성된 코드 파일입니다.";
@@ -21,8 +21,8 @@ static class SyncCommand
         foreach (var item in PlanReader.ReadItems(EnginePaths.PlanFile))
         {
             // 기획서의 항목(item)이 곧 경로(예: Scripts/OceanController.cs)이므로
-            // 이를 MyWaveCompany_Generated 경로와 결합합니다.
-            var fullPath = Path.Combine(EnginePaths.GeneratedProject, item);
+            // 이를 frontend/ 경로와 결합합니다.
+            var fullPath = Path.Combine(EnginePaths.FrontendProject, item);
 
             // 파일인지 폴더인지 구분: 확장자가 있으면 파일, 없으면 폴더로 간주
             if (Path.HasExtension(item)) 

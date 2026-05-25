@@ -31,7 +31,7 @@ static class CommandRunner
               dotnet run -- <command> [options]
 
             명령:
-              sync     기획서.md → MyWaveCompany_Generated/ 동기화 (기본)
+              sync     기획서.md → frontend/ 동기화 (기본)
               serve    Vite 개발 서버 실행 (npm run dev)
               check    기획서 생성 대상 파일·폴더 존재 검증
               doctor   Cesium 404·Ion 토큰·npm 환경 자가 진단
@@ -40,7 +40,7 @@ static class CommandRunner
               help     이 도움말 출력
 
             clean 옵션:
-              --full --yes   MyWaveCompany_Generated 전체 삭제 후 sync (파괴적)
+              --full --yes   frontend/ 전체 삭제 후 sync (파괴적)
 
             예:
               dotnet run

@@ -1,7 +1,7 @@
 # Phase 4 검증 가이드 — “물이 막히는지” 어떻게 확인하나
 
 > **대상:** 차수벽·건물 마스크 데모를 보고 **막힘 여부가 불분명**할 때  
-> **관련:** [FLOOD.md](../MyWaveCompany_Generated/docs/FLOOD.md) · [ROADMAP.md § Phase 4](./ROADMAP.md#phase-4--장애물--차수벽-poc)
+> **관련:** [FLOOD.md](../frontend/docs/FLOOD.md) · [ROADMAP.md § Phase 4](./ROADMAP.md#phase-4--장애물--차수벽-poc)
 
 ---
 
@@ -123,7 +123,7 @@ Phase 4는 **“막힌 구역이 구멍으로 뚫려 보이는지”** 만 검�
 | `building-b` | 건물 | 북 ~230m, 동 ~600m |
 
 앵커: `scene.json` → `129.163, 35.159`  
-파일: [Configs/obstacles.json](../MyWaveCompany_Generated/Configs/obstacles.json)
+파일: [Configs/obstacles.json](../frontend/Configs/obstacles.json)
 
 ---
 
@@ -148,4 +148,4 @@ Phase 4는 **“막힌 구역이 구멍으로 뚫려 보이는지”** 만 검�
 
 ---
 
-*이 문서는 “물이 막히는지 모르겠다”는 UX 피드백에 대한 **기획·QA 답변**이다. 구현 변경 시 [FLOOD.md](../MyWaveCompany_Generated/docs/FLOOD.md) §1과 [진행상태.md](./진행상태.md)를 함께 갱신한다.*
+*이 문서는 “물이 막히는지 모르겠다”는 UX 피드백에 대한 **기획·QA 답변**이다. 구현 변경 시 [FLOOD.md](../frontend/docs/FLOOD.md) §1과 [진행상태.md](./진행상태.md)를 함께 갱신한다.*

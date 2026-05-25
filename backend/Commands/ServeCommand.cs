@@ -2,14 +2,14 @@ using System;
 using System.IO;
 using System.Diagnostics;
 
-/// <summary>MyWaveCompany_Generated Vite 개발 서버 실행 및 환경 관리</summary>
+/// <summary>frontend/ Vite 개발 서버 실행 및 환경 관리</summary>
 static class ServeCommand
 {
     public static int Execute(string[] args)
     {
         Console.WriteLine("[엔진] serve — Vite 개발 서버 시작");
 
-        var projectDir = EnginePaths.GeneratedProject;
+        var projectDir = EnginePaths.FrontendProject;
         if (!Directory.Exists(projectDir))
         {
             Console.Error.WriteLine($"[오류] 생성 프로젝트가 없습니다: {projectDir}");

@@ -27,10 +27,10 @@ Three.js로 Gerstner 검증 → `core/` 분리 → Cesium GPU 3D 수면.
 ### 참조 문서
 | 문서 | 내용 |
 |------|------|
-| [ARCHITECTURE.md](../MyWaveCompany_Generated/docs/ARCHITECTURE.md) | 레이어 구조 |
-| [INTEGRATION.md](../MyWaveCompany_Generated/adapters/cesium/INTEGRATION.md) | Cesium 이식 |
-| [API.md](../MyWaveCompany_Generated/docs/API.md) | GerstnerWave API |
-| [SHADER.md](../MyWaveCompany_Generated/docs/SHADER.md) | GLSL 규칙 |
+| [ARCHITECTURE.md](../frontend/docs/ARCHITECTURE.md) | 레이어 구조 |
+| [INTEGRATION.md](../frontend/adapters/cesium/INTEGRATION.md) | Cesium 이식 |
+| [API.md](../frontend/docs/API.md) | GerstnerWave API |
+| [SHADER.md](../frontend/docs/SHADER.md) | GLSL 규칙 |
 
 ### 핵심 산출물
 - `core/math/GerstnerWave.js`
@@ -62,19 +62,19 @@ Three.js로 Gerstner 검증 → `core/` 분리 → Cesium GPU 3D 수면.
 
 | # | 작업 | 참고 코드/문서 |
 |---|------|----------------|
-| 4-1 | `obstacles.json` 스키마 설계 | [CONFIG.md](../MyWaveCompany_Generated/docs/CONFIG.md)에 추가 |
+| 4-1 | `obstacles.json` 스키마 설계 | [CONFIG.md](../frontend/docs/CONFIG.md)에 추가 |
 | 4-2 | `ObstacleBody` / `loadObstaclesConfig()` | `InteractionTypes.js` `CollisionBody` 패턴 |
 | 4-3 | `ObstacleField.js` (core) — point-in-polygon, SDF | `core/` import 금지 준수 |
 | 4-4 | GPU fragment 마스크 | `GerstnerWaterPrimitiveGPU.js` `buildFragmentShader`, `v_st`/world pos |
 | 4-5 | Cesium Entity로 차수벽·건물 박스 | `FloatingEntity.js` Entity 패턴 |
 | 4-6 | `cesium-main.js` obstacles 로드 | `scene.json` 연동 방식 결정 |
-| 4-7 | 문서: [FLOOD.md §1](../MyWaveCompany_Generated/docs/FLOOD.md) 마스크 PoC | ✅ 스펙 초안 |
+| 4-7 | 문서: [FLOOD.md §1](../frontend/docs/FLOOD.md) 마스크 PoC | ✅ 스펙 초안 |
 | 4-8 | 문서: [SCENE_LAYOUT.md](./SCENE_LAYOUT.md) 물 범위·차수벽 JSON 편집 | ✅ 기획 |
 
 ### 참조 문서 (필독)
 1. [기획서.md § North Star](../기획서.md)
 2. [DOC_GUIDE.md § Phase 4+](./DOC_GUIDE.md)
-3. [INTEGRATION.md](../MyWaveCompany_Generated/adapters/cesium/INTEGRATION.md) — ENU 좌표
+3. [INTEGRATION.md](../frontend/adapters/cesium/INTEGRATION.md) — ENU 좌표
 4. [SCENE_LAYOUT.md](./SCENE_LAYOUT.md) — 물 범위·차수벽 footprint
 5. `core/types/SceneTypes.js` — 해안 `bearingToEnu`, footprint 좌표 변환
 
@@ -106,8 +106,8 @@ Three.js로 Gerstner 검증 → `core/` 분리 → Cesium GPU 3D 수면.
 | 5-5 | 유량·파고 슬라이더 연동 | 기존 `waveControls` 패턴 |
 
 ### 참조 문서
-- [ARCHITECTURE.md § CPU/GPU 동기화](../MyWaveCompany_Generated/docs/ARCHITECTURE.md)
-- [API.md](../MyWaveCompany_Generated/docs/API.md) — `getWaterHeight` 확장
+- [ARCHITECTURE.md § CPU/GPU 동기화](../frontend/docs/ARCHITECTURE.md)
+- [API.md](../frontend/docs/API.md) — `getWaterHeight` 확장
 - Phase 4 전체 산출물
 
 ---
@@ -134,7 +134,7 @@ Three.js로 Gerstner 검증 → `core/` 분리 → Cesium GPU 3D 수면.
 
 ### 참조 문서
 - `Configs/scene.json` (현재 해운대)
-- [INTEGRATION.md § 좌표계](../MyWaveCompany_Generated/adapters/cesium/INTEGRATION.md)
+- [INTEGRATION.md § 좌표계](../frontend/adapters/cesium/INTEGRATION.md)
 
 ---
 
@@ -153,7 +153,7 @@ Three.js로 Gerstner 검증 → `core/` 분리 → Cesium GPU 3D 수면.
 ## Phase 3 — dotnet 생성기 (📋 후순위)
 
 ### 목표
-`dotnet run`으로 `Templates/` → `MyWaveCompany_Generated/` 의미 있는 생성.
+`dotnet run`으로 `Templates/` → `frontend/` 의미 있는 생성.
 
 ### 참조
 - [진행상태.md § Phase 3](../진행상태.md)
