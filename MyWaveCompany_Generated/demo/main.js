@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import wavesJson from '../configs/waves.json';
+import wavesJson from '../Configs/waves.json';
 import { loadWavesConfig, GerstnerWave }         from '../core/index.js';
 import { createOceanMaterial, OceanMesh }        from '../adapters/three/index.js';
 import { FloatingObject }                        from './FloatingObject.js';

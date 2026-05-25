@@ -1,19 +1,42 @@
-import { defineConfig } from 'vite';
-import glsl    from 'vite-plugin-glsl';
-import cesium  from 'vite-plugin-cesium';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, normalizePath } from 'vite';
+import glsl from 'vite-plugin-glsl';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const cesiumBuild = normalizePath(
+  path.resolve(__dirname, 'node_modules/cesium/Build/Cesium'),
+);
+
+/** @type {import('vite-plugin-static-copy').Target[]} */
+const cesiumCopyTargets = [
+  { src: `${cesiumBuild}/Assets`,    dest: 'cesium/Assets' },
+  { src: `${cesiumBuild}/Workers`,   dest: 'cesium/Workers' },
+  { src: `${cesiumBuild}/Widgets`,   dest: 'cesium/Widgets' },
+  { src: `${cesiumBuild}/ThirdParty`, dest: 'cesium/ThirdParty' },
+];
 
 export default defineConfig({
   plugins: [
-    glsl(),     // .glsl 파일을 문자열로 import
-    cesium(),   // Cesium 정적 에셋 자동 복사 + WASM 처리
+    glsl(),
+    viteStaticCopy({
+      targets: cesiumCopyTargets,
+      silent: false,
+    }),
   ],
+  // ESM 번들에서 import.meta.url 대신 /cesium/ 사용 (Workers·Assets 경로)
+  define: {
+    CESIUM_BASE_URL: JSON.stringify('/cesium/'),
+  },
+  envDir: path.resolve(__dirname, '..'),
+  envPrefix: ['VITE_', 'CESIUM_'],
   build: {
     rollupOptions: {
       input: {
-        // Three.js 데모
         main:   'index.html',
-        // Cesium 데모 (Task 2-4)
         cesium: 'cesium.html',
+        shore:  'shore.html',
       },
     },
   },
@@ -21,7 +44,20 @@ export default defineConfig({
     open: true,
   },
   optimizeDeps: {
-    // Cesium은 CJS → ESM 변환이 필요
-    include: ['cesium'],
+    include: [
+      'cesium',
+      '@cesium/engine',
+      'mersenne-twister',
+    ],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '.'),
+    },
   },
 });

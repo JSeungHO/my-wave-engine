@@ -5,6 +5,7 @@ obj/
 # Node / Vite
 node_modules/
 dist/
+MyWaveCompany_Generated/public/cesium/
 
 # Secrets
 .env

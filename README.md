@@ -18,8 +18,13 @@ npm run dev
 
 | 문서 | 설명 |
 |------|------|
-| [기획서.md](./기획서.md) | 프로젝트 목표, 폴더 구조, 생성 대상, 백로그 |
-| [진행상태.md](./진행상태.md) | 현재 진행 상태, 완료/미완 항목 |
+| [기획서.md](./기획서.md) | **제품 목표**, North Star, 성공 기준, Phase 의사결정 |
+| [docs/ROADMAP.md](./docs/ROADMAP.md) | **Phase별 로드맵**, DoD, 작업 목록, 참조 파일 |
+| [docs/DOC_GUIDE.md](./docs/DOC_GUIDE.md) | **구현 시 읽는 순서**, 설정↔코드 매핑, 역할별 가이드 |
+| [docs/VERIFY_PHASE4.md](./docs/VERIFY_PHASE4.md) | **Phase 4 막힘 UX** — 왜 안 보이는지, QA 방법 |
+| [docs/SCENE_LAYOUT.md](./docs/SCENE_LAYOUT.md) | **물 범위·차수벽 위치** — JSON 설정·프리셋·정합 규칙 |
+| [docs/REFERENCE_VIDEO.md](./docs/REFERENCE_VIDEO.md) | **참조 영상** ([YouTube](https://youtu.be/pKvdDQYj6J0)) 타겟 UX·갭·Phase 5a |
+| [진행상태.md](./진행상태.md) | 현재 완료/미완 스냅샷 |
 | [MyWaveCompany_Generated/README.md](./MyWaveCompany_Generated/README.md) | WebGL 오션 프로젝트 진입점 |
 | [MyWaveCompany_Generated/docs/](./MyWaveCompany_Generated/docs/) | 아키텍처, API, 설정, 셰이더 상세 |
 

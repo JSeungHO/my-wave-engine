@@ -8,6 +8,7 @@ export const MAX_WAVES = 8;
  * @property {number} wavelength
  * @property {number} speed
  * @property {number} steepness
+ * @property {number} [phase] - 초기 위상 (rad), 파형 정렬 깨기
  */
 
 /**
@@ -47,6 +48,7 @@ export function loadWavesConfig(data) {
     wavelength: w.wavelength ?? 1,
     speed:      w.speed      ?? 1,
     steepness:  w.steepness  ?? 0.5,
+    phase:      w.phase      ?? 0,
   }));
 
   return {

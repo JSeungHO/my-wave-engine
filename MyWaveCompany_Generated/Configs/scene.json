@@ -1,0 +1,34 @@
+{
+  "_comment": "Phase 4 demo-narrow 프리셋 — 막힘이 명확히 보이는 작은 장면 (docs/SCENE_LAYOUT.md §6.1)",
+  "name": "해운대 해안 (Phase 4 데모)",
+  "anchor": {
+    "lon": 129.163,
+    "lat": 35.159,
+    "altM": 0
+  },
+  "coast": {
+    "_comment": "바다 쪽 600m, 육지 쪽 80m — 차수벽 북단(~55m)이 landwardM(80m) 이내 → landward clip 으로 dry 가능",
+    "alongCoastBearingDeg": 90,
+    "offshoreBearingDeg": 180,
+    "offshoreM": 600,
+    "landwardM": 80,
+    "alongCoastM": 1400,
+    "resolution": 96
+  },
+  "camera": {
+    "_comment": "작은 수면 전체 + 차수벽 동시에 보이는 남쪽 상공 시점",
+    "lon": 129.163,
+    "lat": 35.1568,
+    "heightM": 220,
+    "headingDeg": 0,
+    "pitchDeg": -48
+  },
+  "entities": {
+    "ship": { "lon": 129.163,  "lat": 35.1572, "offsetAlt": 4 },
+    "buoy": { "lon": 129.1600, "lat": 35.1565, "offsetAlt": 1.5 }
+  },
+  "oceanColors": {
+    "deep":    [0.02, 0.10, 0.28, 0.93],
+    "shallow": [0.10, 0.48, 0.62, 0.91]
+  }
+}

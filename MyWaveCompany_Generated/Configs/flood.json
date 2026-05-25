@@ -1,0 +1,24 @@
+{
+  "_schema": "docs/FLOOD.md §2",
+  "_comment": "Phase 5 홍수 시뮬레이션 — 2D diffusive-advective wave, 해운대 해안 기준",
+
+  "grid": {
+    "_comment": "수면 메시와 동일 범위: E[-700,+700], N[-600,+80]. cellSizeM=8 → 175×85 cells",
+    "cellSizeM": 8,
+    "widthM":    1400,
+    "depthM":    680,
+    "originE":   -700,
+    "originN":   -600
+  },
+
+  "inflow": {
+    "_comment": "bearingDeg=180 → 바다가 남쪽 → j=0(남쪽 경계)에서 유입",
+    "bearingDeg":   180,
+    "rateM3PerSec": 120,
+    "baseHeightM":  1.5
+  },
+
+  "gerstnerBlend": 0.35,
+  "speedFactor":   6.0,
+  "maxHeightM":    3.5
+}

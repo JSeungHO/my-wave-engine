@@ -31,9 +31,9 @@ import 'cesium/Build/Cesium/Widgets/widgets.css';
 import wavesJson        from '../../configs/waves.json';
 import interactionJson  from '../../configs/interaction.json';
 import { loadWavesConfig, loadInteractionConfig } from '../../core/index.js';
-// Phase 2b: GPU 버텍스 변위 — Phase 2a 로 돌아가려면 아래 두 줄을 바꾸세요
-// import { GerstnerWaterPrimitive } from './GerstnerWaterPrimitive.js';
-import { GerstnerWaterPrimitiveGPU as GerstnerWaterPrimitive } from './GerstnerWaterPrimitiveGPU.js';
+// Phase 2a: Material 수면 (안정) — GPU 는 VITE_GPU_OCEAN=true 로 opt-in
+import { GerstnerWaterPrimitive } from './GerstnerWaterPrimitive.js';
+// import { GerstnerWaterPrimitiveGPU as GerstnerWaterPrimitive } from './GerstnerWaterPrimitiveGPU.js';
 import { FloatingEntity }  from './FloatingEntity.js';
 import { WakeRegistry }    from './WakeRegistry.js';  // Phase 2c-2
 
@@ -43,7 +43,7 @@ import { WakeRegistry }    from './WakeRegistry.js';  // Phase 2c-2
 
 // Cesium Ion 토큰 — 실제 배포 시 자신의 토큰으로 교체
 // https://ion.cesium.com/tokens
-Cesium.Ion.defaultAccessToken = import.meta.env.CESIUM_ION_TOKEN || 'YOUR_CESIUM_ION_TOKEN';
+Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5ZWE2MjQzMy0wM2IwLTQ0YzUtYmI1YS0wNzZiMDdiNzI1ZDciLCJpZCI6MTg4MTk4LCJpYXQiOjE3MDQ1NDkxMTB9.ncmZPDlHSvO9WExgA6o6KAOeAXZiYNbJ64rLEYFYIfk";
 
 /** 데모 중심 좌표 (부산항 앞바다) */
 const CENTER_LON = 129.04;

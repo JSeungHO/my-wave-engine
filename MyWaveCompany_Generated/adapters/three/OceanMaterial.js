@@ -42,6 +42,7 @@ export class OceanMaterial extends THREE.ShaderMaterial {
         uWaveWavelength:{ value: packScalar(waves, 'wavelength') },
         uWaveSpeed:     { value: packScalar(waves, 'speed') },
         uWaveSteepness: { value: packScalar(waves, 'steepness') },
+        uWavePhase:     { value: packScalar(waves, 'phase') },
         uDeepColor:     { value: new THREE.Color(0x003366) },
         uShallowColor:  { value: new THREE.Color(0x0099cc) },
         uCameraPosition:{ value: new THREE.Vector3() },

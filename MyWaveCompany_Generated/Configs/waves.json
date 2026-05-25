@@ -1,35 +1,83 @@
 {
   "ocean": {
-    "meshResolutionX": 128,
-    "meshResolutionZ": 128,
+    "meshResolutionX": 160,
+    "meshResolutionZ": 160,
     "meshSizeX": 200,
     "meshSizeZ": 200,
     "buoyancyIterations": 3
   },
   "waves": [
     {
-      "name": "Main Swell",
-      "direction": [1.0, 0.5],
-      "amplitude": 0.8,
-      "wavelength": 80.0,
-      "speed": 8.0,
-      "steepness": 0.5
+      "name": "Swell A",
+      "direction": [0.97, 0.24],
+      "amplitude": 1.85,
+      "wavelength": 37.0,
+      "speed": 6.1,
+      "steepness": 0.36,
+      "phase": 0.91
     },
     {
-      "name": "Cross Swell",
-      "direction": [0.3, 1.0],
-      "amplitude": 0.4,
-      "wavelength": 40.0,
-      "speed": 5.0,
-      "steepness": 0.4
+      "name": "Swell B",
+      "direction": [0.31, 0.95],
+      "amplitude": 1.05,
+      "wavelength": 53.0,
+      "speed": 5.3,
+      "steepness": 0.32,
+      "phase": 2.47
+    },
+    {
+      "name": "Cross 1",
+      "direction": [-0.62, 0.78],
+      "amplitude": 0.92,
+      "wavelength": 67.0,
+      "speed": 5.9,
+      "steepness": 0.30,
+      "phase": 4.13
+    },
+    {
+      "name": "Long",
+      "direction": [0.81, -0.59],
+      "amplitude": 1.32,
+      "wavelength": 41.0,
+      "speed": 6.6,
+      "steepness": 0.34,
+      "phase": 1.73
+    },
+    {
+      "name": "Chop 1",
+      "direction": [0.14, 0.99],
+      "amplitude": 0.62,
+      "wavelength": 23.0,
+      "speed": 3.9,
+      "steepness": 0.26,
+      "phase": 5.61
+    },
+    {
+      "name": "Cross 2",
+      "direction": [-0.88, 0.47],
+      "amplitude": 0.78,
+      "wavelength": 71.0,
+      "speed": 5.5,
+      "steepness": 0.28,
+      "phase": 3.29
     },
     {
       "name": "Ripple",
-      "direction": [-0.5, 0.8],
-      "amplitude": 0.15,
-      "wavelength": 15.0,
-      "speed": 3.0,
-      "steepness": 0.3
+      "direction": [0.52, -0.85],
+      "amplitude": 0.48,
+      "wavelength": 17.0,
+      "speed": 3.1,
+      "steepness": 0.22,
+      "phase": 0.58
+    },
+    {
+      "name": "Swell C",
+      "direction": [-0.23, -0.97],
+      "amplitude": 0.88,
+      "wavelength": 29.0,
+      "speed": 4.8,
+      "steepness": 0.30,
+      "phase": 6.02
     }
   ]
 }

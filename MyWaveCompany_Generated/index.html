@@ -1,16 +1,311 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MyWaveCompany — Gerstner Ocean (Three.js)</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #000; }
-    canvas { display: block; }
-  </style>
-</head>
-<body>
-  <script type="module" src="/demo/main.js"></script>
-</body>
-</html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyWaveCompany — Gerstner Ocean (Cesium)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    #cesiumContainer { width: 100%; height: 100%; }
+    .cesium-widget-credits { display: none; }
+    #overlay {
+      position: absolute;
+      top: 16px; left: 16px;
+      max-width: min(360px, calc(100vw - 340px));
+      background: rgba(0, 0, 0, 0.60);
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.7;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #sceneEditor {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      bottom: 16px;
+      width: min(320px, calc(100vw - 32px));
+      background: rgba(8, 12, 20, 0.88);
+      color: #e8eef5;
+      border-radius: 10px;
+      font-size: 12px;
+      z-index: 11;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    #sceneEditor header {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
+    }
+    #sceneEditor header h2 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #7ee8ff;
+    }
+    #sceneEditor header p {
+      margin-top: 4px;
+      opacity: 0.7;
+      font-size: 11px;
+    }
+    #sceneEditor .scroll {
+      overflow-y: auto;
+      padding: 10px 12px 14px;
+      flex: 1;
+    }
+    .section {
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .section:last-child { border-bottom: none; margin-bottom: 0; }
+    .section h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #9cf;
+      margin-bottom: 8px;
+    }
+    .field {
+      margin-bottom: 8px;
+    }
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 3px;
+      opacity: 0.9;
+    }
+    .field-val { color: #7ee8ff; font-variant-numeric: tabular-nums; }
+    .field input[type="range"] {
+      width: 100%;
+      accent-color: #48cae4;
+      cursor: pointer;
+    }
+    #waveScaleValue {
+      color: #7ee8ff;
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    #waveScaleSub, #baseWaterLevelValue {
+      color: #9cf;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .btn-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    #btnPlaceBarrier {
+      flex: 1;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #111;
+    }
+    #btnPlaceBarrier.active {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #fff;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      50% { opacity: 0.85; }
+    }
+    #btnCancelPlace {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    #btnExportConfig {
+      width: 100%;
+      background: rgba(72, 202, 228, 0.2);
+      color: #7ee8ff;
+      border: 1px solid rgba(72, 202, 228, 0.35);
+      margin-top: 8px;
+    }
+    #placeHint {
+      font-size: 11px;
+      color: #fbbf24;
+      margin-top: 4px;
+    }
+    #barrierList { margin-top: 8px; }
+    .barrier-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .barrier-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .barrier-head strong { color: #fcd34d; font-size: 12px; }
+    .btn-del {
+      background: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+      padding: 2px 8px;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .grid2 label {
+      display: flex;
+      flex-direction: column;
+      font-size: 10px;
+      gap: 2px;
+      opacity: 0.85;
+    }
+    .grid2 label.span2 { grid-column: 1 / -1; }
+    .grid2 input {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      color: #fff;
+      padding: 4px 6px;
+      font-size: 11px;
+      width: 100%;
+    }
+    .empty {
+      opacity: 0.55;
+      font-size: 11px;
+      font-style: italic;
+    }
+    #overflowStatus { margin-top: 4px; }
+    .overflow-summary {
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .overflow-summary.safe {
+      background: rgba(34, 197, 94, 0.2);
+      color: #86efac;
+    }
+    .overflow-summary.over {
+      background: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+    }
+    .overflow-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 5px 8px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+    .overflow-row.safe { background: rgba(34, 197, 94, 0.08); }
+    .overflow-row.over { background: rgba(239, 68, 68, 0.12); color: #fecaca; }
+  </style>
+  <script>
+    window.CESIUM_BASE_URL = '/cesium/';
+    globalThis.CESIUM_BASE_URL = '/cesium/';
+  </script>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <div id="overlay">Gerstner Wave 로딩 중…</div>
+
+  <aside id="sceneEditor">
+    <header>
+      <h2>장면 설정</h2>
+      <p>물 범위 · 차수벽 · 넘침 확인</p>
+    </header>
+    <div class="scroll">
+      <section class="section">
+        <h3>물 범위</h3>
+        <div class="field">
+          <label>바다 방향 (offshore) <span class="field-val">5500 m</span></label>
+          <input type="range" id="coastOffshore" min="100" max="8000" step="50" value="5500" />
+        </div>
+        <div class="field">
+          <label>육지 방향 (landward) <span class="field-val">380 m</span></label>
+          <input type="range" id="coastLandward" min="20" max="800" step="10" value="380" />
+        </div>
+        <div class="field">
+          <label>해안선 길이 <span class="field-val">6500 m</span></label>
+          <input type="range" id="coastAlong" min="400" max="10000" step="100" value="6500" />
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>물 높이</h3>
+        <div id="waveScaleValue">7.9 m</div>
+        <span id="waveScaleSub">배율 1.00×</span>
+        <div class="field" style="margin-top:8px">
+          <input type="range" id="waveScaleSlider" min="0.2" max="4" step="0.05" value="1" />
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label>정수위 (기준면) <span id="baseWaterLevelValue" class="field-val">0.0 m</span></label>
+          <input type="range" id="baseWaterLevel" min="0" max="8" step="0.25" value="0" />
+        </div>
+        <small style="opacity:0.65">파고 + 정수위 &gt; 차수벽 높이 → 넘침</small>
+      </section>
+
+      <section class="section">
+        <h3>차수벽</h3>
+        <div class="btn-row">
+          <button type="button" id="btnPlaceBarrier">+ 클릭 위치에 차수벽</button>
+          <button type="button" id="btnCancelPlace" hidden>취소</button>
+        </div>
+        <p id="placeHint" hidden>지도를 클릭하면 차수벽 #N 이 생성됩니다.</p>
+        <div id="barrierList"></div>
+      </section>
+
+      <section class="section">
+        <h3>넘침 확인</h3>
+        <div id="overflowStatus"><p class="empty">로딩 중…</p></div>
+      </section>
+
+
+
+      <!-- Phase 5: 홍수 시뮬레이션 -->
+      <section class="section" id="floodSection">
+        <h3>홍수 시뮬레이션 (Phase 5)</h3>
+        <div class="btn-row">
+          <button type="button" id="btnFloodStart">▶ 시작</button>
+          <button type="button" id="btnFloodReset">↺ 초기화</button>
+        </div>
+        <p id="floodStatus" style="font-size:11px;opacity:0.7;margin-top:4px">⏸ 대기 — ▶ 시작을 눌러 홍수 시작</p>
+        <div class="field" style="margin-top:8px">
+          <label>유입 수위 <span class="field-val" id="floodRateValue">1.5 m</span></label>
+          <input type="range" id="floodRateSlider" min="0.2" max="3.5" step="0.1" value="1.5" />
+        </div>
+        <div class="field">
+          <label>Gerstner 혼합 <span class="field-val" id="floodBlendValue">1.00</span></label>
+          <input type="range" id="floodBlendSlider" min="0" max="1" step="0.05" value="1" />
+          <small style="opacity:0.6;font-size:10px">0 = Gerstner만 · 1 = 홍수 완전 반영</small>
+        </div>
+      </section>
+
+      <button type="button" id="btnExportConfig">설정 JSON 내보내기</button>
+    </div>
+  </aside>
+
+  <script type="module" src="/src/adapters/cesium/cesium-main.js"></script>
+</body>
+</html>
+

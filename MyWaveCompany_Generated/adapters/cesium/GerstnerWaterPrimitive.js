@@ -28,89 +28,114 @@
 import * as Cesium from 'cesium';
 import { GerstnerWave } from '../../core/math/GerstnerWave.js';
 import { MAX_WAVES }    from '../../core/index.js';
+import { coastalBoundsToDegrees } from '../../core/types/SceneTypes.js';
 import { TangentPlane } from './TangentPlane.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cesium Material GLSL (fabric source)
-//
-// INTEGRATION.md uniform 매핑 (Three.js → Cesium):
-//   uTime           → u_time
-//   uWaveCount      → u_waveCount
-//   uWaveDirection  → u_waveDir[8]
-//   uWaveAmplitude  → u_waveAmp[8]
-//   uWaveWavelength → u_waveLen[8]
-//   uWaveSpeed      → u_waveSpeed[8]
-//   uWaveSteepness  → u_waveSteep[8]
-//   uDeepColor      → u_deepColor
-//   uShallowColor   → u_shallowColor
-//
-// Phase 2a: 정확한 Gerstner 변위를 fragment 에서 UV 기반으로 근사.
-// Phase 2b: vertex shader 에서 실제 변위 적용 예정.
+// Cesium Fabric 은 uniform 배열(vec2[8] 등) 미지원 — 개별 uniform 으로 패킹
+// @see https://github.com/CesiumGS/cesium/wiki/Fabric
 // ─────────────────────────────────────────────────────────────────────────────
-const WATER_MATERIAL_GLSL = /* glsl */`
-  // ── Uniforms ──────────────────────────────────────────────────────────────
-  uniform float u_time;
-  uniform vec3  u_deepColor;
-  uniform vec3  u_shallowColor;
-  uniform int   u_waveCount;
-  uniform vec2  u_waveDir[8];
-  uniform float u_waveAmp[8];
-  uniform float u_waveLen[8];
-  uniform float u_waveSpeed[8];
-  uniform float u_waveSteep[8];
 
-  // ── Gerstner height — UV 기반 근사 (Phase 2b 에서 GPU vertex로 이전) ──────
-  // uv 는 [0,1]² → xz 로컬 좌표로 스케일링 (uvScale = 실제 수면 크기 m)
+/** @param {number} n @returns {string} */
+function buildWaterMaterialGlsl(n) {
+  const waveTerms = [];
+  for (let i = 0; i < n; i++) {
+    waveTerms.push(`    h += waveH(xz, u_w${i}, u_sp${i}, u_ph${i});`);
+  }
+
+  // Fabric 이 uniforms 객체로부터 uniform 선언을 자동 삽입 — source 에 선언 금지
+  return /* glsl */`
+  float waveNoise(vec2 xz) {
+    float n1 = fract(sin(dot(xz * 0.07, vec2(12.9898, 78.233))) * 43758.5453);
+    float n2 = fract(sin(dot(xz * 0.11 + 2.1, vec2(39.3468, 11.1355))) * 43758.5453);
+    return (n1 + n2) * 0.5;
+  }
+
+  float waveH(vec2 xz, vec4 w, float spd, float ph) {
+    float k     = 6.28318530718 / max(w.w, 0.001);
+    float omega = spd * k;
+    float phi   = k * dot(w.xy, xz) + omega * u_time + ph;
+    return w.z * sin(phi);
+  }
+
   float gerstnerHeightFrag(vec2 uv, float uvScaleX, float uvScaleZ) {
     float h  = 0.0;
     vec2  xz = vec2((uv.x - 0.5) * uvScaleX, (uv.y - 0.5) * uvScaleZ);
 
-    for (int i = 0; i < 8; i++) {
-      if (i >= u_waveCount) break;
-      float k     = 6.28318530718 / max(u_waveLen[i], 0.001);
-      float omega = u_waveSpeed[i] * k;
-      float phi   = k * dot(u_waveDir[i], xz) + omega * u_time;
-      h += u_waveAmp[i] * sin(phi);
-    }
-    return h;
+    if (u_waveCount <= 0.0) return h;
+${waveTerms.join('\n')}
+    return h * u_amplitudeScale;
   }
 
-  // ── Fresnel (Schlick 근사) ────────────────────────────────────────────────
   float fresnelSchlick(float cosTheta) {
     const float F0 = 0.04;
     return F0 + (1.0 - F0) * pow(1.0 - max(cosTheta, 0.0), 5.0);
   }
 
-  // ── Cesium Material 진입점 ────────────────────────────────────────────────
   czm_material czm_getMaterial(czm_materialInput materialInput) {
     czm_material mat = czm_getDefaultMaterial(materialInput);
 
     vec2  uv      = materialInput.st;
     float h       = gerstnerHeightFrag(uv, 10000.0, 10000.0);
-    float crest   = smoothstep(-0.5, 1.0, h);
+    vec2  xzN     = vec2((uv.x - 0.5) * 10000.0, (uv.y - 0.5) * 10000.0);
+    float irregular = 0.68 + 0.32 * waveNoise(xzN);
+    h += (waveNoise(xzN * 1.7 + u_time * 0.4) - 0.5) * 0.35 * u_amplitudeScale;
+    float crest   = smoothstep(-0.2, 1.9, h * irregular);
+    float foamC   = smoothstep(0.7, 2.3, h * irregular);
 
-    // eye-space 법선의 z 성분으로 Fresnel 계산
     vec3  N       = normalize(materialInput.normalEC);
     float fresnel = fresnelSchlick(abs(N.z));
 
-    // 심해↔천해 색상 혼합
     vec3 color = mix(
-      u_deepColor, u_shallowColor,
-      clamp(fresnel * 0.55 + crest * 0.25, 0.0, 1.0)
+      u_deepColor.rgb, u_shallowColor.rgb,
+      clamp(fresnel * 0.52 + crest * 0.38, 0.0, 1.0)
     );
+    color = mix(color, vec3(0.35, 0.65, 0.78), fresnel * 0.18);
+    color = mix(color, vec3(0.90, 0.97, 1.0), foamC * 0.45);
 
-    // 잔물결 하이라이트
-    float ripple = sin(uv.x * 80.0 + u_time * 2.1)
-                 * sin(uv.y * 60.0 - u_time * 1.7) * 0.07;
-    color += vec3(ripple * 0.5, ripple * 0.75, ripple);
+    float ripple = sin(uv.x * 120.0 + u_time * 3.5)
+                 * sin(uv.y * 90.0  - u_time * 2.8) * 0.06;
+    float flow   = sin(dot(uv - 0.5, vec2(1.0, 0.4)) * 40.0 - u_time * 2.0) * 0.04;
+    color += vec3(flow * 0.2, ripple * 0.15 + flow * 0.3, ripple * 0.2 + flow * 0.25);
 
     mat.diffuse   = color;
-    mat.specular  = 0.75;
-    mat.shininess = 90.0;
+    mat.specular  = 0.45;
+    mat.shininess = 48.0;
     mat.alpha     = 0.90;
     return mat;
   }
 `;
+}
+
+/**
+ * @param {import('../../core/types/WaveTypes.js').GerstnerWaveParams[]} waves
+ * @param {Cesium.Color} deepColor
+ * @param {Cesium.Color} shallowColor
+ */
+function packWaveUniforms(waves, deepColor, shallowColor) {
+  const waveCount = Math.min(waves.length, MAX_WAVES);
+  /** @type {Record<string, unknown>} */
+  const uniforms = {
+    u_time:        0.0,
+    u_deepColor:   deepColor,
+    u_shallowColor: shallowColor,
+    u_waveCount:   waveCount,
+    u_amplitudeScale: 1.0,
+  };
+
+  for (let i = 0; i < MAX_WAVES; i++) {
+    const w = waves[i];
+    uniforms[`u_w${i}`] = w
+      ? new Cesium.Cartesian4(w.direction[0], w.direction[1], w.amplitude, w.wavelength)
+      : new Cesium.Cartesian4(0, 0, 0, 1);
+    uniforms[`u_sp${i}`] = w ? w.speed : 0.0;
+    uniforms[`u_ph${i}`] = w ? (w.phase ?? 0) : 0.0;
+  }
+
+  return uniforms;
+}
+
+const WATER_MATERIAL_GLSL = buildWaterMaterialGlsl(MAX_WAVES);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GerstnerWaterPrimitive
@@ -126,6 +151,7 @@ export class GerstnerWaterPrimitive {
    *   alt0?:        number,  수면 기준 고도 (m, 기본값 0 = 해수면)
    *   widthDeg?:    number,  수면 가로 크기 (도, 기본값 0.09 ≈ 10 km)
    *   heightDeg?:   number,  수면 세로 크기 (도)
+   *   coastAlignment?: import('../../core/types/SceneTypes.js').CoastAlignment
    *   deepColor?:   Cesium.Color,
    *   shallowColor?: Cesium.Color,
    *   buoyancyIterations?: number
@@ -138,6 +164,7 @@ export class GerstnerWaterPrimitive {
       alt0          = 0,
       widthDeg      = 0.09,   // ~10 km
       heightDeg     = 0.09,
+      coastAlignment = null,
       deepColor     = new Cesium.Color(0.00, 0.12, 0.28, 0.90),
       shallowColor  = new Cesium.Color(0.05, 0.48, 0.68, 0.90),
       buoyancyIterations = 3,
@@ -151,45 +178,18 @@ export class GerstnerWaterPrimitive {
     /** ENU 좌표 변환 — Phase 2b vertex shader 에서도 재사용 */
     this.tangentPlane = new TangentPlane(lon0, lat0, alt0);
 
-    this._startJD     = viewer.clock.currentTime.clone();
+    this._startMs     = performance.now();
     this._currentTime = 0;
+    this._amplitudeScale = 1.0;
 
-    // ── 파도 파라미터 패킹 ──────────────────────────────────────────────────
-    const waveCount = Math.min(waves.length, MAX_WAVES);
-    const dirs  = [];
-    const amps  = new Array(MAX_WAVES).fill(0.0);
-    const lens  = new Array(MAX_WAVES).fill(1.0);
-    const spds  = new Array(MAX_WAVES).fill(0.0);
-    const stps  = new Array(MAX_WAVES).fill(0.0);
-
-    for (let i = 0; i < MAX_WAVES; i++) {
-      const w = waves[i];
-      dirs.push(w
-        ? new Cesium.Cartesian2(w.direction[0], w.direction[1])
-        : new Cesium.Cartesian2(0, 0));
-      if (w) {
-        amps[i] = w.amplitude;
-        lens[i] = w.wavelength;
-        spds[i] = w.speed;
-        stps[i] = w.steepness;
-      }
-    }
+    // ── 파도 파라미터 패킹 (Fabric: 개별 uniform, 배열 불가) ─────────────────
+    const waveUniforms = packWaveUniforms(waves, deepColor, shallowColor);
 
     // ── Cesium Material (fabric) ─────────────────────────────────────────────
     this._material = new Cesium.Material({
       fabric: {
-        type: 'GerstnerWater',
-        uniforms: {
-          u_time:        0.0,
-          u_deepColor:   deepColor,
-          u_shallowColor: shallowColor,
-          u_waveCount:   waveCount,
-          u_waveDir:     dirs,
-          u_waveAmp:     amps,
-          u_waveLen:     lens,
-          u_waveSpeed:   spds,
-          u_waveSteep:   stps,
-        },
+        type: 'GerstnerWaterPackedV4',
+        uniforms: waveUniforms,
         source: WATER_MATERIAL_GLSL,
       },
       translucent: true,
@@ -197,12 +197,20 @@ export class GerstnerWaterPrimitive {
 
     // ── Rectangle 평면 지오메트리 (Phase 2a — 정적 Geometry) ─────────────────
     // Phase 2b 에서 ENU 로컬 tessellated custom Geometry 로 교체하여 GPU 변위 추가
-    const rect = Cesium.Rectangle.fromDegrees(
-      lon0 - widthDeg  / 2,
-      lat0 - heightDeg / 2,
-      lon0 + widthDeg  / 2,
-      lat0 + heightDeg / 2,
-    );
+    const rect = coastAlignment
+      ? (() => {
+          const b = coastalBoundsToDegrees(
+            { lon: lon0, lat: lat0, altM: alt0 },
+            coastAlignment,
+          );
+          return Cesium.Rectangle.fromDegrees(b.west, b.south, b.east, b.north);
+        })()
+      : Cesium.Rectangle.fromDegrees(
+          lon0 - widthDeg  / 2,
+          lat0 - heightDeg / 2,
+          lon0 + widthDeg  / 2,
+          lat0 + heightDeg / 2,
+        );
 
     this._primitive = viewer.scene.primitives.add(
       new Cesium.Primitive({
@@ -223,15 +231,11 @@ export class GerstnerWaterPrimitive {
       }),
     );
 
-    // ── preRender: u_time 매 프레임 갱신 ────────────────────────────────────
-    this._preRenderHandler = viewer.scene.preRender.addEventListener(
-      (scene, julianDate) => {
-        this._currentTime = Cesium.JulianDate.secondsDifference(
-          julianDate, this._startJD,
-        );
-        this._material.uniforms.u_time = this._currentTime;
-      },
-    );
+    // ── preRender: u_time 매 프레임 갱신 (performance.now — clock 독립) ───────
+    this._preRenderHandler = viewer.scene.preRender.addEventListener(() => {
+      this._currentTime = (performance.now() - this._startMs) / 1000;
+      this._material.uniforms.u_time = this._currentTime;
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -246,6 +250,21 @@ export class GerstnerWaterPrimitive {
 
   /** TangentPlane (ENU ↔ WGS84 변환) */
   get plane() { return this.tangentPlane; }
+
+  /** @returns {number} */
+  get amplitudeScale() { return this._amplitudeScale; }
+
+  /**
+   * 실시간 파고 배율 (waves.json 기준)
+   * @param {number} scale  0.2 ~ 2.5 권장
+   */
+  setAmplitudeScale(scale) {
+    this._amplitudeScale = Math.max(0.05, scale);
+    this.solver.amplitudeScale = this._amplitudeScale;
+    if (this._material?.uniforms) {
+      this._material.uniforms.u_amplitudeScale = this._amplitudeScale;
+    }
+  }
 
   /**
    * WGS84 위경도 지점의 수면 고도를 반환합니다.

@@ -6,22 +6,14 @@
   <title>MyWaveCompany — Gerstner Ocean (Cesium)</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     html, body {
       width: 100%; height: 100%;
       overflow: hidden;
       background: #000;
       font-family: sans-serif;
     }
-
-    #cesiumContainer {
-      width: 100%; height: 100%;
-    }
-
-    /* Cesium 기본 크레딧 바 위치 조정 */
+    #cesiumContainer { width: 100%; height: 100%; }
     .cesium-widget-credits { display: none; }
-
-    /* 정보 오버레이 */
     #overlay {
       position: absolute;
       top: 16px; left: 16px;
@@ -34,38 +26,15 @@
       pointer-events: none;
       z-index: 10;
     }
-
-    /* Three.js 데모로 이동하는 링크 */
-    #nav {
-      position: absolute;
-      bottom: 16px; right: 16px;
-      z-index: 10;
-    }
-    #nav a {
-      display: inline-block;
-      background: rgba(0,100,200,0.80);
-      color: #fff;
-      text-decoration: none;
-      padding: 8px 14px;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-    #nav a:hover { background: rgba(0,130,240,0.90); }
   </style>
+  <script>
+    window.CESIUM_BASE_URL = '/cesium/';
+    globalThis.CESIUM_BASE_URL = '/cesium/';
+  </script>
 </head>
 <body>
-  <!-- Cesium Viewer 컨테이너 -->
   <div id="cesiumContainer"></div>
-
-  <!-- 정보 오버레이 -->
   <div id="overlay">Gerstner Wave 로딩 중…</div>
-
-  <!-- Three.js 데모 링크 -->
-  <div id="nav">
-    <a href="/">Three.js 데모로 이동 →</a>
-  </div>
-
-  <!-- Cesium 데모 진입점 (vite-plugin-cesium 이 정적 에셋 자동 처리) -->
-  <script type="module" src="/adapters/cesium/cesium-main.js"></script>
+  <script type="module" src="/src/adapters/cesium/cesium-main.js"></script>
 </body>
 </html>

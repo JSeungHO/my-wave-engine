@@ -98,3 +98,96 @@
 3. 파도 수·파라미터 변경 시 페이지 새로고침 권장
 
 > Phase 3에서 `dotnet run` 시 waves.json → 생성 코드 주입 예정.
+
+---
+
+# 설정 스키마 — scene.json (물 범위·장면)
+
+> 경로: `Configs/scene.json`  
+> **배치 기획·튜닝 가이드:** [docs/SCENE_LAYOUT.md](../../docs/SCENE_LAYOUT.md)
+
+## 전체 구조
+
+```json
+{
+  "name": "해운대 해안",
+  "anchor": { "lon": 129.163, "lat": 35.159, "altM": 0 },
+  "coast": { ... },
+  "camera": { ... },
+  "entities": { ... },
+  "oceanColors": { ... }
+}
+```
+
+## `anchor`
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `lon`, `lat` | number | ENU 원점 — 해안 기준점 |
+| `altM` | number | 기준 고도 (m) |
+
+## `coast` — **물 범위** (직사각형 수면)
+
+| 필드 | 타입 | Default | 설명 |
+|------|------|---------|------|
+| `offshoreM` | number | 7000 | 앵커 → **바다** 방향 수면 길이 (m) |
+| `landwardM` | number | 400 | 앵커 → **육지** 방향 수면 길이 (m) |
+| `alongCoastM` | number | 9000 | 해안선 **따라** 수면 폭 (m) |
+| `offshoreBearingDeg` | number | 90 | 바다 방위 (0=북, 180=남) |
+| `alongCoastBearingDeg` | number | 0 | 해안선 방향 |
+| `resolution` | number | 128 | GPU ENU 격자 세그먼트 |
+
+로더: `loadSceneConfig()` → `GerstnerWaterPrimitiveGPU` `buildCoastalEnuGeometry()`
+
+## `camera` / `entities` / `oceanColors`
+
+| 섹션 | 용도 |
+|------|------|
+| `camera` | 초기 Cesium 카메라 (lon, lat, heightM, headingDeg, pitchDeg) |
+| `entities.ship`, `entities.buoy` | 부유체 WGS84 위치 |
+| `oceanColors.deep`, `shallow` | RGBA 0~1 — GPU fragment 색 |
+
+---
+
+# 설정 스키마 — obstacles.json (차수벽·건물)
+
+> 경로: `Configs/obstacles.json`  
+> **위치·범위 정합:** [docs/SCENE_LAYOUT.md](../../docs/SCENE_LAYOUT.md) §5
+
+## 전체 구조
+
+```json
+{
+  "obstacles": [
+    {
+      "id": "barrier-1",
+      "type": "flood_barrier",
+      "heightM": 3.5,
+      "footprint": [ [lon, lat], ... ]
+    }
+  ]
+}
+```
+
+## 장애물 객체
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `id` | string | ✅ | 고유 ID |
+| `type` | string | ✅ | `flood_barrier` \| `building` \| `custom` |
+| `heightM` | number | ✅ | 장애물 높이 (m) |
+| `footprint` | `[lon,lat][]` | ✅ | WGS84 폐곡선 (≥3점) → ENU AABB |
+
+로더: `loadObstaclesConfig()` → `ObstacleField`, `ObstacleRegistry`
+
+## footprint 편집 요령
+
+- 앵커는 `scene.json` `anchor` 와 **동일**해야 ENU 정합
+- 차수벽: 동–서 `lon` 범위 = 길이, `lat` 차 = **두께** (PoC ≥50m 권장)
+- `landwardM` 은 차수벽 **육지 쪽** 수면과 함께 조정 — [SCENE_LAYOUT.md §5.3](../../docs/SCENE_LAYOUT.md)
+
+## 변경 반영
+
+1. `Configs/obstacles.json` 수정
+2. 페이지 새로고침
+3. 콘솔 `obstacle ENU boxes` 로그 확인

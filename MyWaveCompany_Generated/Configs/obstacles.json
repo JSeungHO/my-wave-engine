@@ -1,0 +1,45 @@
+{
+  "_comment": "Phase 4 demo-narrow 장애물 — 차수벽은 해안선(seaM≈0), 건물은 수중에 배치",
+  "_schema": "docs/FLOOD.md §1 · docs/SCENE_LAYOUT.md §5",
+  "obstacles": [
+    {
+      "id": "barrier-1",
+      "type": "flood_barrier",
+      "heightM": 3.5,
+      "_comment": "해안선(lat≈35.159) 바로 위에 두께 ~55m 차수벽 (SCENE_LAYOUT §5.3 규칙 R1/R5)",
+      "_enu_approx": "centerE≈0m, centerN≈28m, halfE≈637m, halfN≈28m / 북단≈56m → landward clip 작동",
+      "footprint": [
+        [129.1560, 35.15900],
+        [129.1700, 35.15900],
+        [129.1700, 35.15950],
+        [129.1560, 35.15950]
+      ]
+    },
+    {
+      "id": "building-a",
+      "type": "building",
+      "heightM": 15,
+      "_comment": "수중 건물 A — 앵커 남 ~100m, 서 ~250m (수면 안에서 dry hole 확인용)",
+      "_enu_approx": "centerE≈-250m, centerN≈-100m, halfE≈40m, halfN≈40m",
+      "footprint": [
+        [129.15981, 35.15774],
+        [129.16069, 35.15774],
+        [129.16069, 35.15846],
+        [129.15981, 35.15846]
+      ]
+    },
+    {
+      "id": "building-b",
+      "type": "building",
+      "heightM": 20,
+      "_comment": "수중 건물 B — 앵커 남 ~150m, 동 ~200m (수면 안에서 dry hole 확인용)",
+      "_enu_approx": "centerE≈+200m, centerN≈-150m, halfE≈40m, halfN≈40m",
+      "footprint": [
+        [129.16476, 35.15729],
+        [129.16564, 35.15729],
+        [129.16564, 35.15801],
+        [129.16476, 35.15801]
+      ]
+    }
+  ]
+}

@@ -11,6 +11,8 @@ export class GerstnerWave {
     this.waves = waves;
     this.buoyancyIterations = options.buoyancyIterations ?? 3;
     this.baseY = options.baseY ?? 0;
+    /** @type {number} waves.json 대비 실시간 파고 배율 */
+    this.amplitudeScale = 1.0;
   }
 
   /**
@@ -28,7 +30,7 @@ export class GerstnerWave {
       const [Dx, Dz] = w.direction;
       const k     = (2 * Math.PI) / Math.max(w.wavelength, 0.001);
       const omega = w.speed * k;
-      const phi   = k * (Dx * x + Dz * z) + omega * time;
+      const phi   = k * (Dx * x + Dz * z) + omega * time + (w.phase ?? 0);
       const sinP  = Math.sin(phi);
       const cosP  = Math.cos(phi);
 
@@ -37,7 +39,8 @@ export class GerstnerWave {
       dy += w.amplitude * sinP;
     }
 
-    return { x: dx, y: dy, z: dz };
+    const s = this.amplitudeScale;
+    return { x: dx * s, y: dy * s, z: dz * s };
   }
 
   /**
@@ -56,7 +59,7 @@ export class GerstnerWave {
       const k     = (2 * Math.PI) / Math.max(w.wavelength, 0.001);
       const omega = w.speed * k;
       const kA    = k * w.amplitude;
-      const phi   = k * (Dx * x + Dz * z) + omega * time;
+      const phi   = k * (Dx * x + Dz * z) + omega * time + (w.phase ?? 0);
       const sinP  = Math.sin(phi);
       const cosP  = Math.cos(phi);
 
@@ -65,9 +68,10 @@ export class GerstnerWave {
       sumNy += w.steepness * kA * sinP;
     }
 
-    const nx  = -sumNx;
-    const ny  = 1 - sumNy;
-    const nz  = -sumNz;
+    const s = this.amplitudeScale;
+    const nx  = -sumNx * s;
+    const ny  = 1 - sumNy * s;
+    const nz  = -sumNz * s;
     const len = Math.hypot(nx, ny, nz) || 1;
 
     return { x: nx / len, y: ny / len, z: nz / len };
