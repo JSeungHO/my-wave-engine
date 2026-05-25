@@ -1,0 +1,35 @@
+{
+  "ocean": {
+    "meshResolutionX": 128,
+    "meshResolutionZ": 128,
+    "meshSizeX": 200,
+    "meshSizeZ": 200,
+    "buoyancyIterations": 3
+  },
+  "waves": [
+    {
+      "name": "Main Swell",
+      "direction": [1.0, 0.5],
+      "amplitude": 0.8,
+      "wavelength": 80.0,
+      "speed": 8.0,
+      "steepness": 0.5
+    },
+    {
+      "name": "Cross Swell",
+      "direction": [0.3, 1.0],
+      "amplitude": 0.4,
+      "wavelength": 40.0,
+      "speed": 5.0,
+      "steepness": 0.4
+    },
+    {
+      "name": "Ripple",
+      "direction": [-0.5, 0.8],
+      "amplitude": 0.15,
+      "wavelength": 15.0,
+      "speed": 3.0,
+      "steepness": 0.3
+    }
+  ]
+}

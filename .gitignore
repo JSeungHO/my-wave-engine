@@ -1,0 +1,17 @@
+# .NET
+bin/
+obj/
+
+# Node / Vite
+node_modules/
+dist/
+
+# Secrets
+.env
+.env.*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vs/
+*.user

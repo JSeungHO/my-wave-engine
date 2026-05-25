@@ -1,0 +1,25 @@
+{
+  "_template": "gen_interaction.json → configs/interaction.json",
+  "_comment": [
+    "자동화 엔진(Program.cs Phase 3)이 이 파일을 읽어",
+    "MyWaveCompany_Generated/configs/interaction.json 을 생성합니다.",
+    "gen_ 파일은 직접 수정하지 말고 이 템플릿(또는 기획서)을 수정하세요."
+  ],
+  "wake": {
+    "maxSources":      16,
+    "defaultStrength": 0.4,
+    "defaultRadiusM":  25,
+    "decayTimeSec":    8,
+    "minSpeedKnots":   1.0
+  },
+  "collision": {
+    "buoyancyIterations":  3,
+    "submergeThresholdM":  0.2,
+    "dragCoefficient":     0.05
+  },
+  "performance": {
+    "heightFieldCacheTileSizeM": 64,
+    "heightFieldCacheRefreshHz": 10,
+    "maxEntitiesPerFrame":       32
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "_comment": "Phase 2c — 파도 상호작용 설정 (WakeField · Collision · Performance)",
+  "wake": {
+    "maxSources":      16,
+    "defaultStrength": 0.4,
+    "defaultRadiusM":  25,
+    "decayTimeSec":    8,
+    "minSpeedKnots":   1.0
+  },
+  "collision": {
+    "buoyancyIterations":  3,
+    "submergeThresholdM":  0.2,
+    "dragCoefficient":     0.05
+  },
+  "performance": {
+    "heightFieldCacheTileSizeM": 64,
+    "heightFieldCacheRefreshHz": 10,
+    "maxEntitiesPerFrame":       32
+  }
+}

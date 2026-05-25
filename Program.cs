@@ -1,0 +1,1 @@
+﻿CommandRunner.Run(args);
