@@ -440,6 +440,48 @@
 
     .overflow-row.over { background: rgba(239, 68, 68, 0.12); color: #fecaca; }
 
+    .camera-preset-grid {
+
+      display: grid;
+
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+      gap: 6px;
+
+    }
+
+    .camera-preset-btn {
+
+      min-height: 30px;
+
+      padding: 6px 8px;
+
+      border: 1px solid rgba(255, 255, 255, 0.12);
+
+      border-radius: 6px;
+
+      background: rgba(0, 0, 0, 0.35);
+
+      color: #e8eef5;
+
+      font-size: 11px;
+
+      font-weight: 600;
+
+      cursor: pointer;
+
+      transition: border-color 0.15s ease, background 0.15s ease;
+
+    }
+
+    .camera-preset-btn:hover {
+
+      border-color: rgba(126, 232, 255, 0.45);
+
+      background: rgba(126, 232, 255, 0.08);
+
+    }
+
   </style>
 
   <script>
@@ -471,6 +513,16 @@
     </header>
 
     <div class="scroll">
+
+      <section class="section">
+
+        <h3>빠른 이동</h3>
+
+        <div class="camera-preset-grid" id="cameraPresetGrid"></div>
+
+      </section>
+
+
 
       <section class="section">
 

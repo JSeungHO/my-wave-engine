@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
     "build:safe": "dotnet run -- --no-overwrite",
     "build:force": "dotnet run -- --force"
   },
@@ -19,6 +20,7 @@
     "esbuild": "^0.28.0",
     "vite": "^5.4.0",
     "vite-plugin-glsl": "^1.3.1",
-    "vite-plugin-static-copy": "^0.17.1"
+    "vite-plugin-static-copy": "^0.17.1",
+    "vitest": "^4.1.7"
   }
 }

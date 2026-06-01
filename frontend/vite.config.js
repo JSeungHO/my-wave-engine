@@ -18,6 +18,9 @@ const cesiumCopyTargets = [
 ];
 
 export default defineConfig({
+  test: {
+    environment: 'node',
+  },
   plugins: [
     glsl(),
     viteStaticCopy({

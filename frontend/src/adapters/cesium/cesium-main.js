@@ -15,6 +15,7 @@ import { loadWavesConfig, loadInteractionConfig, loadSceneConfig,
          loadObstaclesConfig, obstacleBodiesToBoxes,
          loadFloodConfig }                                        from '../../../core/index.js';
 import { SceneEditor } from '../../../adapters/cesium/SceneEditor.js';
+import { bindCameraPresets } from '../../../adapters/cesium/CameraPresets.js';
 import { FloodLayer }  from '../../../adapters/cesium/FloodLayer.js';
 
 const TAG = '[cesium-main]';
@@ -413,6 +414,7 @@ async function boot() {
       },
     });
     log(6, 'camera set', sceneCfg.camera);
+    bindCameraPresets(viewer, Cesium, sceneCfg.camera);
 
     // World terrain 은 수면 primitive 를 가릴 수 있어 ellipsoid 유지
 
