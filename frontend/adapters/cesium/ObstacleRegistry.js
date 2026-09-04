@@ -13,8 +13,9 @@ import {
 } from '../../core/types/ObstacleTypes.js';
 
 const OBSTACLE_COLORS = {
-  flood_barrier:      new Cesium.Color(0.85, 0.60, 0.08, 0.88),
-  flood_barrier_over: new Cesium.Color(0.95, 0.15, 0.12, 0.92),
+  // 차수벽은 불투명 — 반투명 Gerstner 수면(큰 파고) 뒤에 있어도 안 묻히도록
+  flood_barrier:      new Cesium.Color(0.85, 0.60, 0.08, 1.0),
+  flood_barrier_over: new Cesium.Color(0.95, 0.15, 0.12, 1.0),
   building:           new Cesium.Color(0.60, 0.62, 0.68, 0.90),
   custom:             new Cesium.Color(0.90, 0.28, 0.28, 0.82),
 };
