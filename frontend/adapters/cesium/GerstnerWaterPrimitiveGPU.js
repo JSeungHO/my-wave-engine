@@ -37,6 +37,7 @@ import * as Cesium from 'cesium';
 
 import { GerstnerWave }  from '../../core/math/GerstnerWave.js';
 import { ObstacleField } from '../../core/math/ObstacleField.js';
+import { seawardFloodHeight } from '../../core/math/barrierSurge.js';
 import { bearingToEnu }  from '../../core/types/SceneTypes.js';
 import { TangentPlane }  from './TangentPlane.js';
 
@@ -1008,6 +1009,21 @@ export class GerstnerWaterPrimitiveGPU {
       h += this._floodLayer.sampleHeightAt(e, n);
     }
     return h;
+  }
+
+  /**
+   * 차수벽 넘침 판정용 surge — 벽 seaward(유입측) 면에 실제로 작용하는 수위.
+   * 벽 footprint 내부는 wall mask 로 h=0 (dry) 이므로 중심 샘플(getSurgeAt)은
+   * 홍수를 못 봄. 벽 남쪽 면 바로 앞을 벽 길이 방향으로 훑어 최대치를 쓴다.
+   * ponytail: 유입은 항상 ShallowWater 격자 j=0(남쪽) → seaward = -N 고정.
+   *           북쪽 유입 시나리오가 생기면 방향 인자 추가.
+   * @param {{centerE:number, centerN:number, halfE:number, halfN:number}} b
+   * @returns {number}
+   */
+  getSurgeForBarrier(b) {
+    const base = this._baseWaterLevelM;
+    if (!this._floodLayer?.active) return base;
+    return base + seawardFloodHeight(this._floodLayer, b);
   }
 
   /**

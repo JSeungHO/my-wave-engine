@@ -85,6 +85,27 @@ npm run dev
 
 ---
 
+## Vercel 배포
+
+`dotnet run -- serve` 는 로컬 편의용(내부에서 `npm install` + `vite`)일 뿐,
+배포는 .NET 없이 프론트엔드만 정적 빌드합니다. 루트 [`vercel.json`](./vercel.json):
+
+```json
+{
+  "framework": "vite",
+  "installCommand": "cd frontend && npm install",
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist"
+}
+```
+
+- Vercel 프로젝트는 **Root Directory = 저장소 루트** 그대로 두면 됩니다 (위 명령이 `frontend/` 로 이동).
+- **환경변수:** Project Settings → Environment Variables 에 `CESIUM_ION_TOKEN` 추가.
+  Vite `envPrefix` 가 `CESIUM_` 를 포함하므로 `import.meta.env.CESIUM_ION_TOKEN` 으로 주입됩니다
+  (`src/adapters/cesium/cesium-main.js`). 로컬은 루트 `.env` (`.env.example` 참고).
+
+---
+
 ## 기술 스택
 
 | 영역 | 기술 |

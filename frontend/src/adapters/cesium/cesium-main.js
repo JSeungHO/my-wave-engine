@@ -598,7 +598,7 @@ async function boot() {
         const heightM = Number(runtime.waveHeightM ?? baseAmplitudeM * scale);
         const surgeM = ocean.getSurgeLevelM?.() ?? ocean.baseWaterLevelM ?? 0;
         const overflowN = obstacleRegistry.getFloodBarriers?.()
-          .filter((b) => (ocean.getSurgeAt?.(b.centerE, b.centerN) ?? surgeM) > b.heightM).length ?? 0;
+          .filter((b) => (ocean.getSurgeForBarrier?.(b) ?? ocean.getSurgeAt?.(b.centerE, b.centerN) ?? surgeM) > b.heightM).length ?? 0;
 
         const floodStatus = floodLayer
           ? (floodLayer.active
