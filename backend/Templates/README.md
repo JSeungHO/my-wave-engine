@@ -1,47 +1,47 @@
-# backend/Templates/ ? ??? ?? ??? ???
+# backend/Templates/ — 자동화 엔진 템플릿 저장소
 
-> Phase 3 `Program.cs` ? ? ??? ??? ?? `frontend/` ? ??? ?????.
+> Phase 3 `Program.cs` 가 이 폴더의 파일을 읽어 `frontend/` 에 코드를 생성합니다.
 
-## ??? ?? (`.cursorrules` �5)
+## 접두사 규칙 (`.cursorrules` §5)
 
-| ??? | ?? | ?? ? ?? |
+| 접두사 | 의미 | 생성 후 수정 |
 |--------|------|-------------|
-| `gen_` | ?? ?? ?? | **??** ? ???�???? ?? |
-| `src_` | ??? ?? ?? | ???? ?? |
-| `lib_` | ?? ????? ?? | `core/` ? **??** |
+| `gen_` | 자동 생성 대상 | **금지** — 기획서·템플릿만 수정 |
+| `src_` | 개발자 직접 작성 | 자유롭게 수정 |
+| `lib_` | 외부 라이브러리 의존 | `core/` 내 **금지** |
 
-## ?? ?? (Program.cs Phase 3 ?? ??)
+## 경로 매핑 (Program.cs Phase 3 구현 예정)
 
-| Templates ?? | gen_ ??? ?? ? | ?? ?? |
+| Templates 파일 | gen_ 접두사 제거 후 | 출력 경로 |
 |----------------|---------------------|-----------|
 | `configs/gen_interaction.json` | `interaction.json` | `frontend/Configs/` |
 | `core/gen_WakeField.js` | `WakeField.js` | `frontend/core/math/` |
 | `core/gen_wake.glsl` | `wake.glsl` | `frontend/core/shaders/` |
 | `adapters/cesium/gen_WakeRegistry.js` | `WakeRegistry.js` | `frontend/adapters/cesium/` |
 
-## ?? ?? (Phase 2c)
+## 현재 상태 (Phase 2c)
 
-Phase 3 ??? ??? `frontend/` ? ??? ???? ?????.  
-`gen_` ??? Phase 3 ?? ?? ??? ???.
+Phase 3 자동화 전까지 `frontend/` 내 파일을 수동으로 유지합니다.  
+`gen_` 파일은 Phase 3 설계 문서 역할을 합니다.
 
-## ??? ?? (Phase 3 ?? ??)
+## 템플릿 변수 (Phase 3 치환 예정)
 
-`{{???}}` ???? ??? ?? JSON ???? ?? ?????.
+`{{변수명}}` 형식으로 기획서 또는 JSON 설정에서 값을 주입합니다.
 
-| ?? | ?? |
+| 변수 | 출처 |
 |------|------|
-| `{{maxSources}}` | `interaction.json ? wake.maxSources` |
-| `{{decayTimeSec}}` | `interaction.json ? wake.decayTimeSec` |
-| `{{minSpeedKnots}}` | `interaction.json ? wake.minSpeedKnots` |
-| `{{waveCount}}` | `waves.json ? waves.length` |
+| `{{maxSources}}` | `interaction.json → wake.maxSources` |
+| `{{decayTimeSec}}` | `interaction.json → wake.decayTimeSec` |
+| `{{minSpeedKnots}}` | `interaction.json → wake.minSpeedKnots` |
+| `{{waveCount}}` | `waves.json → waves.length` |
 
-## ?? ??
+## 폴더 구조
 
 ```
 backend/Templates/
-??? README.md
-??? configs/gen_interaction.json
-??? core/gen_WakeField.js
-??? core/gen_wake.glsl
-??? adapters/cesium/   (??)
+├── README.md
+├── configs/gen_interaction.json
+├── core/gen_WakeField.js
+├── core/gen_wake.glsl
+└── adapters/cesium/   (예정)
 ```

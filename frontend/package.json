@@ -4,7 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "copy-cesium": "node Scripts/copy-cesium-assets.mjs",
+    "postinstall": "node Scripts/copy-cesium-assets.mjs",
+    "predev": "node Scripts/copy-cesium-assets.mjs",
     "dev": "vite",
+    "prebuild": "node Scripts/copy-cesium-assets.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
@@ -18,9 +22,9 @@
   "devDependencies": {
     "@rollup/pluginutils": "^5.3.0",
     "esbuild": "^0.28.0",
+    "playwright": "^1.62.1",
     "vite": "^5.4.0",
     "vite-plugin-glsl": "^1.3.1",
-    "vite-plugin-static-copy": "^0.17.1",
     "vitest": "^4.1.7"
   }
 }

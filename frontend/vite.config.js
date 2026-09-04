@@ -1,21 +1,13 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, normalizePath } from 'vite';
+import { defineConfig } from 'vite';
 import glsl from 'vite-plugin-glsl';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const cesiumBuild = normalizePath(
-  path.resolve(__dirname, 'node_modules/cesium/Build/Cesium'),
-);
 
-/** @type {import('vite-plugin-static-copy').Target[]} */
-const cesiumCopyTargets = [
-  { src: `${cesiumBuild}/Assets`,    dest: 'cesium/Assets' },
-  { src: `${cesiumBuild}/Workers`,   dest: 'cesium/Workers' },
-  { src: `${cesiumBuild}/Widgets`,   dest: 'cesium/Widgets' },
-  { src: `${cesiumBuild}/ThirdParty`, dest: 'cesium/ThirdParty' },
-];
+// Cesium Assets/Workers/Widgets/ThirdParty 는 Scripts/copy-cesium-assets.mjs 가
+// public/cesium/ 로 복사 (postinstall·predev·prebuild). Vite 가 public/ 을
+// dev·build 모두 그대로 서빙 → 별도 플러그인 불필요.
 
 export default defineConfig({
   test: {
@@ -23,10 +15,6 @@ export default defineConfig({
   },
   plugins: [
     glsl(),
-    viteStaticCopy({
-      targets: cesiumCopyTargets,
-      silent: false,
-    }),
   ],
   // ESM 번들에서 import.meta.url 대신 /cesium/ 사용 (Workers·Assets 경로)
   define: {

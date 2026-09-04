@@ -284,7 +284,8 @@ export class SceneEditor {
     const floodActive = this._floodLayer?.active ?? false;
 
     const lines = this._barriers.map((b, i) => {
-      const surgeM = this._ocean.getSurgeAt?.(b.centerE, b.centerN)
+      const surgeM = this._ocean.getSurgeForBarrier?.(b)
+        ?? this._ocean.getSurgeAt?.(b.centerE, b.centerN)
         ?? this._ocean.baseWaterLevelM
         ?? 0;
       const over = surgeM > b.heightM;
@@ -306,7 +307,8 @@ export class SceneEditor {
     this._registry.setOverflowState(overflowIds);
 
     const summarySurge = this._barriers.length
-      ? Math.max(...this._barriers.map((b) => this._ocean.getSurgeAt?.(b.centerE, b.centerN) ?? 0))
+      ? Math.max(...this._barriers.map((b) =>
+          this._ocean.getSurgeForBarrier?.(b) ?? this._ocean.getSurgeAt?.(b.centerE, b.centerN) ?? 0))
       : (this._ocean.getSurgeLevelM?.() ?? 0);
 
     const waveNote = floodActive
