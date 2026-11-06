@@ -51,6 +51,8 @@
     #tlSkip { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
     #tlSkip:disabled { opacity: 0.35; cursor: default; }
     #tlCanvas { width: 100%; height: 74px; display: block; }
+    #scen button { font-size: 12px; padding: 7px 4px; }
+    #scenDesc { margin-top: 6px; min-height: 30px; }
     #err { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); max-width: 640px; padding: 10px 14px;
       background: rgba(120, 20, 10, 0.92); border-radius: 10px; color: #fff; font-size: 12.5px; display: none; z-index: 20; white-space: pre-wrap; }
     #loading { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 15px; background: #6d8496; }
@@ -93,8 +95,17 @@
   <div id="err"></div>
 
   <div id="ctrl" class="panel">
+    <h2>시나리오</h2>
+    <div class="btns" id="scen">
+      <button data-k="east">동해안 과거 사례급</button>
+      <button data-k="large" class="on">대형</button>
+      <button data-k="tohoku">동일본 2011급</button>
+      <button data-k="max">역대 최대급</button>
+    </div>
+    <p class="hint" id="scenDesc"></p>
+
     <h2>쓰나미</h2>
-    <div class="slider"><label>앞바다 파고 <b id="vAmp"></b></label><input id="amp" type="range" min="1" max="12" step="0.5" value="6" /></div>
+    <div class="slider"><label>앞바다 파고 <b id="vAmp"></b></label><input id="amp" type="range" min="1" max="20" step="0.5" value="6" /></div>
     <div class="slider"><label>주기 <b id="vPer"></b></label><input id="per" type="range" min="30" max="300" step="5" value="90" /></div>
     <p class="hint">수심 24 m 앞바다 기준. 해안에 오면서 얕아져 파고가 커지고 앞면이 물 벽이 됩니다.</p>
 

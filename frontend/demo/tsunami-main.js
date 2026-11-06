@@ -139,6 +139,36 @@ bindSlider('wall', 'vWall', (v) => (v === 0 ? '없음' : `${v.toFixed(1)} m`), (
   solver.uploadTerrain();
   coast.setWallHeight(v);
 });
+/* ───────── 시나리오 ─────────
+ * 앞바다(수심 24 m) 파고·주기만 정한다. 해안 높이는 얕아지며 커진 계산 결과 (HUD '해안 최고 수위')
+ * 비교 기준: 해안에서 관측된 높이 — 1983 동해 임원항 약 4 m, 2011 동일본 다수 지역 10~20 m · 최대 약 40 m */
+const SCENARIOS = {
+  east:   { amp: 1.5, per: 120, desc: '1983년 동해 지진해일(임원항 약 4 m)과 비슷한 규모 · 해안 수 m' },
+  large:  { amp: 6,   per: 90,  desc: '해안 10 m 이상 · 일반적인 차수벽을 넘는 대형 쓰나미' },
+  tohoku: { amp: 9,   per: 150, desc: '2011 동일본 대지진 큰 피해 지역 수준 · 해안 약 20 m' },
+  max:    { amp: 16,  per: 180, desc: '관측 사상 최대급 · 해안 30~40 m (동일본 최대 지점 수준)' },
+};
+let scenarioKey = 'large';
+function showScenario(key) {
+  scenarioKey = key;
+  document.querySelectorAll('#scen button').forEach((b) => b.classList.toggle('on', b.dataset.k === key));
+  $('scenDesc').textContent = key ? `${SCENARIOS[key].desc}. 실제 결과는 HUD 의 ‘해안 최고 수위’` : '직접 설정한 값';
+}
+function setSlider(id, v) {
+  $(id).value = v;
+  $(id).dispatchEvent(new Event('input'));
+}
+document.querySelectorAll('#scen button').forEach((b) => b.addEventListener('click', () => {
+  const sc = SCENARIOS[b.dataset.k];
+  setSlider('amp', sc.amp);
+  setSlider('per', sc.per);
+  showScenario(b.dataset.k);
+  startTsunami();
+}));
+// 슬라이더를 직접 움직이면 시나리오 선택 해제
+['amp', 'per'].forEach((id) => $(id).addEventListener('input', (e) => { if (e.isTrusted) showScenario(null); }));
+showScenario('large');
+
 $('gaps').addEventListener('change', (e) => { state.wallGaps = e.target.checked; rebuildTerrain(); resetSim(); });
 
 function startTsunami() {
@@ -339,6 +369,7 @@ window.__tsunami = {
   setCamera: (n) => setCamera(n, true),
   setWall(v) { $('wall').value = v; $('wall').dispatchEvent(new Event('input')); },
   setAmp(v) { $('amp').value = v; $('amp').dispatchEvent(new Event('input')); },
+  scenario(k) { document.querySelector(`#scen button[data-k="${k}"]`).click(); },
   get time() { return solver.time; },
   get spray() { return spray.count; },
   get stats() { return lastStats; },
