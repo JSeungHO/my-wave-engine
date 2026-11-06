@@ -28,6 +28,7 @@ export default defineConfig({
         main:   'index.html',
         cesium: 'cesium.html',
         shore:  'shore.html',
+        tsunami: 'tsunami.html',
       },
     },
   },

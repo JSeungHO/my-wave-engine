@@ -8,6 +8,12 @@
 
 ## 스크린샷
 
+### NEW — 쓰나미 실시간 시뮬레이션 (`/tsunami.html`)
+
+![쓰나미가 차수벽에 부딪혀 넘치는 장면](docs/screenshots/tsunami-wall-impact.png)
+
+*비선형 얕은 물 방정식을 GPU(WebGL2)에서 실시간 계산. 앞바다 파고·주기·차수벽 높이를 바꾸면 반사·월파·도시 침수가 계산 결과로 달라진다 → [docs/TSUNAMI.md](docs/TSUNAMI.md)*
+
 ### 해운대 해안 — Gerstner GPU 3D + 차수벽 + 장면 설정
 
 ![해운대 해안 Gerstner 수면, 차수벽 3개, 장면 설정 패널](docs/screenshots/haeundae-ocean.png)
@@ -72,6 +78,7 @@ dotnet run -- serve
 |-----|------|
 | `/` | Cesium 메인 — Gerstner + 차수벽 + 홍수 |
 | `/shore.html` | Three.js 해변 데모 |
+| `/tsunami.html` | 쓰나미 실시간 시뮬레이션 (GPU 얕은 물 방정식 · 차수벽 충돌) |
 | `/?material=1` | Material 2a 평면 모드 (GPU 디버그) |
 | `/?debugObstacles=1` | 장애물 shield/넘침 색상 오버레이 |
 
