@@ -8,11 +8,12 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { buildCoastTerrain, applyWallHeight, COAST_LAYOUT, shoreOffset } from '../core/math/CoastTerrain.js';
-import { DEFAULT_TSUNAMI, etaIn, inflowDuration } from '../core/math/TsunamiInflow.js';
+import { DEFAULT_TSUNAMI } from '../core/math/TsunamiInflow.js';
 import { SweSolverGPU } from '../adapters/three/tsunami/SweSolverGPU.js';
 import { CoastScene } from '../adapters/three/tsunami/CoastScene.js';
 import { WaterSurface } from '../adapters/three/tsunami/WaterSurface.js';
 import { SprayParticles } from '../adapters/three/tsunami/SprayParticles.js';
+import { TsunamiTimeline } from './tsunami-timeline.js';
 
 const params = new URLSearchParams(location.search);
 // 기본 2 m 격자 (640×320). 휴대폰 등 작은 화면은 4 m (320×160)
@@ -22,12 +23,26 @@ const $ = (id) => document.getElementById(id);
 
 /* ───────── 렌더러 · 카메라 ───────── */
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: params.has('capture') });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// 고해상도 화면에서 픽셀 수가 너무 많으면 프레임이 떨어져 계산도 느려짐 → 1.5 로 제한
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.82;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
+
+/* ───────── 오류 표시 (셰이더·GPU 기능) ───────── */
+function showError(msg) {
+  const el = $('err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+renderer.debug.onShaderError = (gl, program, vs, fs) => {
+  const log = (gl.getShaderInfoLog(fs) || '') + (gl.getShaderInfoLog(vs) || '') + (gl.getProgramInfoLog(program) || '');
+  showError(`그래픽 셰이더 오류 — 이 화면을 캡처해서 알려주세요\n${log.slice(0, 600)}`);
+};
+if (!renderer.capabilities.isWebGL2) showError('이 브라우저는 WebGL2 를 지원하지 않아 쓰나미 계산을 할 수 없습니다. 최신 Chrome/Edge 를 사용하세요.');
+else if (!renderer.extensions.has('EXT_color_buffer_float')) showError('이 GPU/브라우저는 float 렌더링(EXT_color_buffer_float)을 지원하지 않아 계산이 동작하지 않습니다.');
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 30000);
@@ -66,13 +81,16 @@ const state = {
   started: false,
   peakFront: -Infinity,
   orbit: false,
+  ff: false,          // 충돌 직전으로 건너뛰는 중
 };
+const START_DELAY = 1;
 
 let terrain = buildCoastTerrain({ dx: DX, wallHeight: state.wallHeight, wallGaps: state.wallGaps });
 let solver = new SweSolverGPU(renderer, terrain, state.tsunami);
 let coast = new CoastScene(terrain, solver, shared);
 let water = new WaterSurface(terrain, solver, shared);
 const spray = new SprayParticles(shared);
+const timeline = new TsunamiTimeline($('tlCanvas'));
 scene.add(coast.group, water.group, spray.points);
 
 function rebuildTerrain() {
@@ -125,9 +143,10 @@ $('gaps').addEventListener('change', (e) => { state.wallGaps = e.target.checked;
 
 function startTsunami() {
   resetSim();
-  state.tsunami.startDelay = 3;
+  state.tsunami.startDelay = START_DELAY;
   solver.setTsunami({ ...state.tsunami });
   state.started = true;
+  timeline.start(solver.time, state.tsunami);
   state.playing = true;
   $('pause').textContent = '일시정지';
 }
@@ -138,7 +157,10 @@ function resetSim() {
   spray.clear();
   state.started = false;
   state.peakFront = -Infinity;
+  state.ff = false;
   lastStats = null;
+  timeline.reset();
+  timeline.params = null;
 }
 $('start').addEventListener('click', startTsunami);
 $('reset').addEventListener('click', () => { resetSim(); state.playing = true; $('pause').textContent = '일시정지'; });
@@ -148,6 +170,12 @@ document.querySelectorAll('#speed button').forEach((b) => b.addEventListener('cl
   document.querySelectorAll('#speed button').forEach((x) => x.classList.toggle('on', x === b));
 }));
 document.querySelectorAll('#cams button').forEach((b) => b.addEventListener('click', () => setCamera(b.dataset.c)));
+$('tlSkip').addEventListener('click', () => {
+  if (!timeline.canSkip) return;
+  state.ff = true;
+  state.playing = true;
+  $('pause').textContent = '일시정지';
+});
 
 /* ───────── 통계 (축소 텍스처) ───────── */
 let lastStats = null;
@@ -167,58 +195,33 @@ function computeStats(buf) {
       }
     }
   }
+  if (front > -50) state.peakFront = Math.max(state.peakFront, front);
   return { front, areaHa: area / 10000, maxDepth: depth };
-}
-
-/* ───────── 그래프: 앞바다 수위 곡선 ───────── */
-const chart = $('chart');
-function drawChart() {
-  const dpr = Math.min(window.devicePixelRatio, 2);
-  const w = chart.clientWidth, h = chart.clientHeight;
-  if (chart.width !== w * dpr) { chart.width = w * dpr; chart.height = h * dpr; }
-  const ctx = chart.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-  const p = { ...state.tsunami, startDelay: 3 };
-  const T = inflowDuration(p);
-  const A = Math.max(1, p.amplitude);
-  const y = (e) => h * 0.55 - (e / A) * h * 0.42;
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.beginPath(); ctx.moveTo(0, y(0)); ctx.lineTo(w, y(0)); ctx.stroke();
-  ctx.strokeStyle = '#4fd1c5'; ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  for (let i = 0; i <= w; i++) {
-    const e = etaIn((i / w) * T, p);
-    i === 0 ? ctx.moveTo(i, y(e)) : ctx.lineTo(i, y(e));
-  }
-  ctx.stroke();
-  if (state.started) {
-    const x = Math.min(w, (solver.time / T) * w);
-    ctx.fillStyle = '#ff6b4a';
-    ctx.beginPath(); ctx.arc(x, y(solver.etaInNow), 3.5, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,107,74,0.4)'; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-  }
-  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.font = '10px sans-serif';
-  ctx.fillText('앞바다 수위 곡선', 2, 10);
 }
 
 function updateHud() {
   const wallTop = L.groundAtWall + state.wallHeight;
-  $('hTime').textContent = state.started ? `${Math.max(0, solver.time - 3).toFixed(0)} s` : '-';
+  const tShow = Math.max(0, solver.time - START_DELAY);
+  $('hTime').textContent = state.started ? `${tShow.toFixed(0)} s` : '-';
   $('hEta').textContent = `${solver.etaInNow >= 0 ? '+' : ''}${solver.etaInNow.toFixed(1)} m`;
   $('hWall').textContent = state.wallHeight > 0 ? `해발 ${wallTop.toFixed(1)} m` : '벽 없음';
   const st = $('status');
   if (lastStats) {
-    if (lastStats.front > -50) state.peakFront = Math.max(state.peakFront, lastStats.front);
     $('hFront').textContent = state.peakFront > -50 ? `해발 ${state.peakFront.toFixed(1)} m` : '-';
     $('hArea').textContent = `${lastStats.areaHa.toFixed(2)} ha`;
     $('hDepth').textContent = `${lastStats.maxDepth.toFixed(1)} m`;
   }
-  if (!state.started) { st.textContent = '대기 중'; st.className = 'idle'; }
-  else if (lastStats && lastStats.areaHa > 0.05) { st.textContent = '월파 · 도시 침수'; st.className = 'warn'; }
-  else if (solver.time < state.tsunami.startDelay + state.tsunami.period * 0.5) { st.textContent = '물이 빠지는 중'; st.className = 'idle'; }
-  else { st.textContent = '차수벽이 막는 중'; st.className = 'ok'; }
-  drawChart();
+  const ph = timeline.phaseInfo;
+  st.textContent = state.ff ? '건너뛰는 중…' : ph.label;
+  st.style.color = ph.color;
+  $('tlPhase').textContent = st.textContent;
+  $('tlPhase').style.color = ph.color;
+  $('tlTime').textContent = state.started ? `t = ${tShow.toFixed(0)} s` : '';
+  $('tlHint').textContent = state.ff ? '파도가 해안에 닿기 직전까지 빠르게 계산하는 중' : timeline.hint(solver.time);
+  $('tlSkip').disabled = !timeline.canSkip || state.ff;
+  $('hPerf').textContent = perf.text;
+  $('hPerf').style.color = perf.slow ? 'var(--warn)' : '';
+  timeline.draw(solver.time, state.started);
 }
 
 /* ───────── 루프 ───────── */
@@ -226,24 +229,49 @@ let last = performance.now();
 let frame = 0;
 let simSinceEmit = 0;
 let realTime = 0;
+const perf = { fps: 60, ratio: 0, text: '-', slow: false, simAcc: 0, realAcc: 0 };
 function tick(now) {
-  const dtReal = Math.min(0.05, (now - last) / 1000);
+  // 프레임이 늦어도 0.1 s 까지는 계산이 따라잡음 (그 이상은 탭 전환 등으로 보고 버림)
+  const dtReal = Math.min(0.1, (now - last) / 1000);
   last = now;
   let simDt = 0;
-  if (state.playing) {
+  if (state.ff) {
+    // 충돌 직전으로 건너뛰기: 프레임당 최대 3 s 씩 계산, 해안 수위가 오르기 시작하면 잘게
+    const near = lastStats && lastStats.front > -0.2;
+    simDt = solver.advance(near ? 0.4 : 3.0, 2000);
+    realTime += simDt;
+    const buf = solver.readReduced();
+    lastStats = computeStats(buf);
+    timeline.update(solver.time, lastStats, solver.etaInNow);
+    if (!timeline.canSkip || solver.time > START_DELAY + 4 * state.tsunami.period + 200) state.ff = false;
+    updateHud();
+  } else if (state.playing) {
     simDt = solver.advance(dtReal * state.speed, 900);
     realTime += simDt;
   }
-  simSinceEmit += simDt;
+  simSinceEmit += state.ff ? 0 : simDt;
   frame++;
-  if (frame % 3 === 0) {
+  if (!state.ff && frame % 3 === 0) {
     const buf = solver.readReduced();
     lastStats = computeStats(buf);
+    timeline.update(solver.time, lastStats, solver.etaInNow);
     spray.emitFromField(buf, solver.rw, solver.rh, solver.block * DX, simSinceEmit);
     simSinceEmit = 0;
     if (frame % 6 === 0) updateHud();
   }
-  spray.update(simDt);
+  if (!state.ff) spray.update(simDt);
+
+  // 실제 진행 속도 (1초 평균)
+  perf.fps = perf.fps * 0.95 + (dtReal > 0 ? 1 / dtReal : 60) * 0.05;
+  perf.simAcc += state.ff ? 0 : simDt;
+  perf.realAcc += dtReal;
+  if (perf.realAcc >= 1) {
+    perf.ratio = perf.simAcc / perf.realAcc;
+    const want = state.playing && !state.ff ? state.speed : 0;
+    perf.slow = want > 0 && perf.ratio < want * 0.75;
+    perf.text = state.playing && !state.ff ? `${perf.ratio.toFixed(1)}× · ${perf.fps.toFixed(0)} fps` : `${perf.fps.toFixed(0)} fps`;
+    perf.simAcc = 0; perf.realAcc = 0;
+  }
 
   if (camTween) {
     camTween.t = Math.min(1, camTween.t + dtReal / 1.6);
@@ -290,17 +318,22 @@ window.__tsunami = {
       const adv = solver.advance(step, 100000);
       realTime += adv;
       left -= step;
+      const b = solver.readReduced();
       if (left <= 4) {
-        const b = solver.readReduced();
         spray.emitFromField(b, solver.rw, solver.rh, solver.block * DX, adv);
         spray.update(adv);
       }
+      timeline.update(solver.time, computeStats(b), solver.etaInNow);
     }
     const buf = solver.readReduced();
     lastStats = computeStats(buf);
+    timeline.update(solver.time, lastStats, solver.etaInNow);
     updateHud();
-    return { time: solver.time, ...lastStats };
+    return { time: solver.time, phase: timeline.phaseInfo.label, ...lastStats };
   },
+  skip() { $('tlSkip').click(); },
+  get phase() { return timeline.phaseInfo.label; },
+  get ff() { return state.ff; },
   pause() { state.playing = false; },
   play() { state.playing = true; },
   setCamera: (n) => setCamera(n, true),

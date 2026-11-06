@@ -27,7 +27,6 @@
     #status.ok { color: var(--ok); } #status.warn { color: var(--warn); } #status.idle { color: var(--muted); }
     .row { display: flex; justify-content: space-between; padding: 3px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
     .row span:first-child { color: var(--muted); }
-    #chart { margin-top: 10px; width: 100%; height: 64px; }
     #ctrl { top: 16px; right: 16px; width: 280px; padding: 14px 16px 16px; max-height: calc(100% - 32px); overflow-y: auto; }
     #ctrl h2 { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 14px 0 6px; }
     #ctrl h2:first-child { margin-top: 0; }
@@ -44,9 +43,23 @@
     button.on { border-color: var(--accent); color: var(--accent); }
     .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
     .check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12.5px; cursor: pointer; }
+    #timeline { left: 322px; right: 312px; bottom: 16px; padding: 10px 14px 12px; }
+    #tlTop { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+    #tlPhase { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
+    #tlTime { font-variant-numeric: tabular-nums; color: var(--text); }
+    #tlHint { color: var(--muted); font-size: 12px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #tlSkip { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+    #tlSkip:disabled { opacity: 0.35; cursor: default; }
+    #tlCanvas { width: 100%; height: 74px; display: block; }
+    #err { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); max-width: 640px; padding: 10px 14px;
+      background: rgba(120, 20, 10, 0.92); border-radius: 10px; color: #fff; font-size: 12.5px; display: none; z-index: 20; white-space: pre-wrap; }
     #loading { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 15px; background: #6d8496; }
+    @media (max-width: 1100px) {
+      #timeline { left: 16px; right: 312px; }
+    }
     @media (max-width: 720px) {
       #hud { width: calc(100% - 32px); }
+      #timeline { display: none; }
       #ctrl { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; max-height: 45%; }
     }
   </style>
@@ -64,8 +77,20 @@
     <div class="row"><span>차수벽 꼭대기</span><span id="hWall">-</span></div>
     <div class="row"><span>침수 면적 (벽 뒤)</span><span id="hArea">0.00 ha</span></div>
     <div class="row"><span>최대 침수 깊이</span><span id="hDepth">0.0 m</span></div>
-    <canvas id="chart"></canvas>
+    <div class="row"><span>실제 진행 속도</span><span id="hPerf">-</span></div>
   </div>
+
+  <div id="timeline" class="panel">
+    <div id="tlTop">
+      <span id="tlPhase">대기 중</span>
+      <span id="tlTime">t = 0 s</span>
+      <span id="tlHint">‘쓰나미 발생’을 누르면 시작합니다</span>
+      <button id="tlSkip" disabled>⏭ 충돌 직전으로</button>
+    </div>
+    <canvas id="tlCanvas"></canvas>
+  </div>
+
+  <div id="err"></div>
 
   <div id="ctrl" class="panel">
     <h2>쓰나미</h2>
